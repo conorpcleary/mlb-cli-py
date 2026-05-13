@@ -23,7 +23,7 @@ A Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) sco
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/mlb-cli-py.git
+   git clone https://github.com/conorpcleary/mlb-cli-py.git
    cd mlb-cli-py
    ```
 
