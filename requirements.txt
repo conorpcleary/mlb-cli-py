@@ -1,0 +1,2 @@
+pytermgui==7.7.4
+MLB-StatsAPI==1.9.0
