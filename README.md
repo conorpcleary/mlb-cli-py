@@ -1,0 +1,85 @@
+# MLB Box Score TUI
+
+A Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) scores, schedules, and standings. Built with `pytermgui` and the `MLB-StatsAPI`.
+
+## Features
+
+- **Yesterday's Schedule:** See all games from the previous day, including matchups and final scores.
+- **Today's Schedule:** See upcoming games for the current day, including matchups and status.
+- **League Standings:** Display current standings for all 6 MLB divisions (AL and NL).
+
+## Screenshots
+
+*(Insert screenshots of your TUI here)*
+
+## Installation
+
+### Prerequisites
+
+- Python 3.10+
+- A terminal with support for box-drawing characters and ANSI colors.
+
+### Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/box-score-cli-py.git
+   cd box-score-cli-py
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Usage
+
+Run the application using the main entry point:
+
+```bash
+python3 mlb_tui.py
+```
+
+### Controls
+
+| Key | Action |
+| --- | --- |
+| `[` | Switch to Yesterday's Scores |
+| `]` | Switch to Today's Schedule |
+| `s` | Switch to League Standings |
+| `ESC` | Exit the application |
+| `Arrow Keys` / `Tab` | Navigate between focusable items (games, divisions, buttons) |
+| `Enter` | Trigger navigation buttons |
+
+## Project Structure
+
+```text
+box-score-cli-py/
+├── mlb_tui.py           # Main entry point
+├── app/
+│   ├── models/          # Data fetching and processing (MLB-StatsAPI)
+│   ├── widgets/         # Custom TUI components (GameWidget, StandingWidget)
+│   └── screens/         # High-level window and layout definitions
+├── requirements.txt     # Project dependencies
+└── README.md            # You are here!
+```
+
+## Contributing
+
+Future planned features include:
+
+- Cycling through games to view full box scores.
+- Live score updates for ongoing games.
+- Team-specific filtering.
+
+Feel free to open issues or submit pull requests!
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
