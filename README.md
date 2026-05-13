@@ -43,7 +43,7 @@ A Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) sco
 Run the application using the main entry point:
 
 ```bash
-python3 mlb_tui.py
+python3 mlb_cli.py
 ```
 
 ### Controls
@@ -61,7 +61,7 @@ python3 mlb_tui.py
 
 ```text
 mlb-cli-py/
-├── mlb_tui.py           # Main entry point
+├── mlb_cli.py           # Main entry point
 ├── app/
 │   ├── models/          # Data fetching and processing (MLB-StatsAPI)
 │   ├── widgets/         # Custom TUI components (GameWidget, StandingWidget)
