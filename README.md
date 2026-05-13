@@ -23,8 +23,8 @@ A Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) sco
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/box-score-cli-py.git
-   cd box-score-cli-py
+   git clone https://github.com/yourusername/mlb-cli-py.git
+   cd mlb-cli-py
    ```
 
 2. **Create and activate a virtual environment:**
@@ -60,7 +60,7 @@ python3 mlb_tui.py
 ## Project Structure
 
 ```text
-box-score-cli-py/
+mlb-cli-py/
 ├── mlb_tui.py           # Main entry point
 ├── app/
 │   ├── models/          # Data fetching and processing (MLB-StatsAPI)
