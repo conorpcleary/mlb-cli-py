@@ -5,11 +5,12 @@ Contains functions that return lists of widgets and titles for different applica
 import pytermgui as ptg
 from app.widgets.game_widgets import create_grid, StandingWidget, NavigationWidget
 from app.models.data_service import (
-    fetch_schedule, 
-    get_yesterday_date, 
-    get_today_date, 
+    fetch_schedule,
+    get_yesterday_date,
+    get_today_date,
     fetch_standings
 )
+
 
 def get_yesterday_widgets(on_switch_today, on_switch_standings):
     """

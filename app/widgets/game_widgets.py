@@ -8,6 +8,7 @@ from app.models.data_service import get_team_abbr
 
 class Separator(ptg.Label):
     """A simple horizontal line separator widget."""
+
     def __init__(self, **kwargs):
         super().__init__("─" * 10, **kwargs)
 
@@ -16,6 +17,7 @@ class GameWidget(ptg.Container):
     """
     A container widget displaying the score and teams for a single MLB game.
     """
+
     def __init__(self, game, **kwargs):
         """
         Initializes the GameWidget with game data.
@@ -67,6 +69,7 @@ class StandingWidget(ptg.Container):
     """
     A container widget displaying the standings for a specific MLB division.
     """
+
     def __init__(self, division_data, **kwargs):
         """
         Initializes the StandingWidget with division data.
@@ -110,6 +113,7 @@ class NavigationWidget(ptg.Container):
     A persistent navigation bar widget shown at the top of every screen.
     Displays available pages and their hotkeys, highlighting the active one.
     """
+
     def __init__(self, active_page=None, **kwargs):
         """
         Initializes the NavigationWidget.
