@@ -64,6 +64,23 @@ class StandingWidget(ptg.Container):
         
         self.set_widgets(widgets)
 
+class NavigationWidget(ptg.Container):
+    def __init__(self, active_page=None, **kwargs):
+        super().__init__(**kwargs)
+        self.border = ptg.boxes.EMPTY
+        
+        yest_style = "inverse" if active_page == "yesterday" else ""
+        today_style = "inverse" if active_page == "today" else ""
+        stand_style = "inverse" if active_page == "standings" else ""
+
+        self.set_widgets([
+            ptg.Splitter(
+                ptg.Label(f"[{yest_style}]Yesterday[/] [bold][cyan][[/]", parent_align=ptg.HorizontalAlignment.CENTER),
+                ptg.Label(f"[{today_style}]Today[/] [bold][cyan]][/]", parent_align=ptg.HorizontalAlignment.CENTER),
+                ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]", parent_align=ptg.HorizontalAlignment.CENTER),
+            ),
+        ])
+
 def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
