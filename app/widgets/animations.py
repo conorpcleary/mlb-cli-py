@@ -3,6 +3,7 @@ Animation utilities for the MLB CLI application.
 Provides functions for sliding windows and other transitions.
 """
 import pytermgui as ptg
+from pytermgui.animations import Direction
 
 
 def slide_transition(window, manager, widgets, title, duration=250):
@@ -20,24 +21,18 @@ def slide_transition(window, manager, widgets, title, duration=250):
     static_height = window.height
 
     target_x = (manager.terminal.width - static_width) // 2
-    start_x, start_y = window.pos
+    _, start_y = window.pos
     off_screen_left = -static_width
     off_screen_right = manager.terminal.width
 
-    def slide_out_step(anim):
-        """Steps the window towards the left off-screen position."""
-        curr_x = int(start_x + (off_screen_left - start_x) * anim.state)
-        window.pos = (curr_x, start_y)
-        return False
-
-    def slide_in_step(anim):
-        """Steps the window from the right off-screen position to the center."""
-        curr_x = int(off_screen_right + (target_x - off_screen_right) * anim.state)
+    def slide_step(anim, off_x):
+        """Updates the window position based on animation state and off-screen target."""
+        curr_x = int(target_x + (off_x - target_x) * anim.state)
         window.pos = (curr_x, start_y)
         return False
 
     def on_slide_out_finish(_):
-        """Updates window content and starts the slide-in animation."""
+        """Updates window content and starts the slide-in animation using Direction.BACKWARD."""
         window.set_widgets(widgets)
         window.set_title(title)
         window.width = static_width
@@ -47,12 +42,14 @@ def slide_transition(window, manager, widgets, title, duration=250):
 
         ptg.animator.animate_float(
             duration=duration,
-            on_step=slide_in_step
+            direction=Direction.BACKWARD,
+            on_step=lambda anim: slide_step(anim, off_screen_right)
         )
 
-    # Start the slide-out animation
+    # Start the slide-out animation using Direction.FORWARD
     ptg.animator.animate_float(
         duration=duration,
-        on_step=slide_out_step,
+        direction=Direction.FORWARD,
+        on_step=lambda anim: slide_step(anim, off_screen_left),
         on_finish=on_slide_out_finish
     )
