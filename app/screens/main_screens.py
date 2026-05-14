@@ -3,9 +3,13 @@ Screen definitions for the MLB CLI application.
 Contains functions that return lists of widgets and titles for different application views.
 """
 import pytermgui as ptg
-from app.widgets.game_widgets import Separator, create_grid, StandingWidget, NavigationWidget
-from app.models.data_service import fetch_schedule, get_yesterday_date, get_today_date, fetch_standings
-
+from app.widgets.game_widgets import create_grid, StandingWidget, NavigationWidget
+from app.models.data_service import (
+    fetch_schedule, 
+    get_yesterday_date, 
+    get_today_date, 
+    fetch_standings
+)
 
 def get_yesterday_widgets(on_switch_today, on_switch_standings):
     """
