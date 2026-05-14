@@ -2,8 +2,8 @@
 Data service module for fetching MLB data via the statsapi library.
 Provides functions for team abbreviations, schedules, and standings.
 """
-import statsapi
 from datetime import datetime, timedelta
+import statsapi
 
 # Global cache for team abbreviations
 TEAMS = {}
@@ -14,7 +14,6 @@ def fetch_teams():
     Fetches all MLB teams and populates the global TEAMS cache with abbreviations.
     Defaults to specific common teams if the API request fails.
     """
-    global TEAMS
     try:
         teams_data = statsapi.get('teams', {'sportId': 1})['teams']
         for t in teams_data:
