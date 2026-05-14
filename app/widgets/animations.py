@@ -22,7 +22,6 @@ def slide_transition(window, manager, widgets, title, duration=350):
 
     target_x = (manager.terminal.width - static_width) // 2
     _, start_y = window.pos
-    off_screen_left = -static_width
     off_screen_right = manager.terminal.width
 
     def slide_step(anim, off_x):
