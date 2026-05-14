@@ -13,31 +13,28 @@ def main():
         main_window = ptg.Window(width=static_width, height=static_height, is_static=True, is_noresize=True)
         manager.add(main_window)
 
-        def update_to_yesterday(button=None, *args):
-            widgets, title = get_yesterday_widgets(update_to_today, update_to_standings)
+        def set_window_data(widgets, title, *args):
             main_window.set_widgets(widgets)
             main_window.set_title(title)
             main_window.width = static_width
             main_window.height = static_height
+            main_window.styles.border = "green"
+            main_window.styles.corner = "green"
             main_window.center()
+
+        def update_to_yesterday(button=None, *args):
+            widgets, title = get_yesterday_widgets(update_to_today, update_to_standings)
+            set_window_data(widgets, title, *args)
             return True
 
         def update_to_today(button=None, *args):
             widgets, title = get_today_widgets(update_to_yesterday, update_to_standings)
-            main_window.set_widgets(widgets)
-            main_window.set_title(title)
-            main_window.width = static_width
-            main_window.height = static_height
-            main_window.center()
+            set_window_data(widgets, title, *args)
             return True
 
         def update_to_standings(button=None, *args):
             widgets, title = get_standings_widgets(update_to_yesterday)
-            main_window.set_widgets(widgets)
-            main_window.set_title(title)
-            main_window.width = static_width
-            main_window.height = static_height
-            main_window.center()
+            set_window_data(widgets, title, *args)
             return True
 
         def exit_app(*args):
