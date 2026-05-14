@@ -85,9 +85,12 @@ class NavigationWidget(ptg.Container):
 
         self.set_widgets([
             ptg.Splitter(
-                ptg.Label(f"[{yest_style}]Yesterday[/] [bold][cyan][[/]", parent_align=ptg.HorizontalAlignment.CENTER),
-                ptg.Label(f"[{today_style}]Today[/] [bold][cyan]][/]", parent_align=ptg.HorizontalAlignment.CENTER),
-                ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]", parent_align=ptg.HorizontalAlignment.CENTER),
+                ptg.Label(f"[{yest_style}]Yesterday[/] [bold][cyan][[/]",
+                          parent_align=ptg.HorizontalAlignment.CENTER),
+                ptg.Label(f"[{today_style}]Today[/] [bold][cyan]][/]",
+                          parent_align=ptg.HorizontalAlignment.CENTER),
+                ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]",
+                          parent_align=ptg.HorizontalAlignment.CENTER),
             ),
         ])
 
