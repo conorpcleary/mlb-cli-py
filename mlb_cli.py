@@ -26,7 +26,7 @@ def main():
             is_noresize=True)
         manager.add(main_window)
 
-        def set_window_data(widgets, title, *args):
+        def set_window_data(widgets, title):
             """Sets the content, title, and styling for the main window."""
             main_window.set_widgets(widgets)
             main_window.set_title(title)
@@ -36,27 +36,27 @@ def main():
             main_window.styles.corner = "green"
             main_window.center()
 
-        def update_to_yesterday(button=None, *args):
+        def update_to_yesterday(*_args, **_kwargs):
             """Transitions the main window to show yesterday's scores."""
             widgets, title = get_yesterday_widgets(
                 update_to_today, update_to_standings)
-            set_window_data(widgets, title, *args)
+            set_window_data(widgets, title)
             return True
 
-        def update_to_today(button=None, *args):
+        def update_to_today(*_args, **_kwargs):
             """Transitions the main window to show today's schedule."""
             widgets, title = get_today_widgets(
                 update_to_yesterday, update_to_standings)
-            set_window_data(widgets, title, *args)
+            set_window_data(widgets, title)
             return True
 
-        def update_to_standings(button=None, *args):
+        def update_to_standings(*_args, **_kwargs):
             """Transitions the main window to show current MLB standings."""
             widgets, title = get_standings_widgets(update_to_yesterday)
-            set_window_data(widgets, title, *args)
+            set_window_data(widgets, title)
             return True
 
-        def exit_app(*args):
+        def exit_app(*_args, **_kwargs):
             """Stops the WindowManager and exits the application."""
             manager.stop()
             return True

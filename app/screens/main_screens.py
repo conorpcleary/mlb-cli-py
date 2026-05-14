@@ -12,13 +12,13 @@ from app.models.data_service import (
 )
 
 
-def get_yesterday_widgets(on_switch_today, on_switch_standings):
+def get_yesterday_widgets(_on_switch_today, _on_switch_standings):
     """
     Generates the widget list and title for the 'Yesterday's Scores' screen.
 
     Args:
-        on_switch_today (callable): Callback to switch to the 'Today' screen.
-        on_switch_standings (callable): Callback to switch to the 'Standings' screen.
+        _on_switch_today (callable): Callback to switch to the 'Today' screen.
+        _on_switch_standings (callable): Callback to switch to the 'Standings' screen.
 
     Returns:
         tuple: (list of widgets, title string)
@@ -34,13 +34,13 @@ def get_yesterday_widgets(on_switch_today, on_switch_standings):
     return widgets, "[green]Yesterday's Scores[/]"
 
 
-def get_today_widgets(on_switch_yesterday, on_switch_standings):
+def get_today_widgets(_on_switch_yesterday, _on_switch_standings):
     """
     Generates the widget list and title for the 'Today's Schedule' screen.
 
     Args:
-        on_switch_yesterday (callable): Callback to switch to the 'Yesterday' screen.
-        on_switch_standings (callable): Callback to switch to the 'Standings' screen.
+        _on_switch_yesterday (callable): Callback to switch to the 'Yesterday' screen.
+        _on_switch_standings (callable): Callback to switch to the 'Standings' screen.
 
     Returns:
         tuple: (list of widgets, title string)
@@ -56,12 +56,12 @@ def get_today_widgets(on_switch_yesterday, on_switch_standings):
     return widgets, "[green]Today's Schedule[/]"
 
 
-def get_standings_widgets(on_switch_yesterday):
+def get_standings_widgets(_on_switch_yesterday):
     """
     Generates the widget list and title for the 'MLB Standings' screen.
 
     Args:
-        on_switch_yesterday (callable): Callback to return to the scores view.
+        _on_switch_yesterday (callable): Callback to return to the scores view.
 
     Returns:
         tuple: (list of widgets, title string)

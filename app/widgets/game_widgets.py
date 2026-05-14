@@ -137,8 +137,7 @@ class NavigationWidget(ptg.Container):
                           parent_align=ptg.HorizontalAlignment.CENTER),
                 ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]",
                           parent_align=ptg.HorizontalAlignment.CENTER),
-            ),
-            ptg.Label("─" * 60, parent_align=ptg.HorizontalAlignment.CENTER)
+            )
         ])
 
 
