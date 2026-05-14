@@ -2,7 +2,7 @@
 Unit tests for the data_service module.
 """
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime
 from app.models.data_service import (
     fetch_teams,
@@ -37,7 +37,7 @@ class TestDataService(unittest.TestCase):
     @patch('statsapi.get')
     def test_fetch_teams_failure(self, mock_get):
         """Test fallback behavior when API fails."""
-        mock_get.side_effect = Exception("API Down")
+        mock_get.side_effect = RuntimeError("API Down")
         fetch_teams()
         self.assertEqual(TEAMS[147], 'NYY')
         self.assertEqual(TEAMS[110], 'BAL')
@@ -48,7 +48,7 @@ class TestDataService(unittest.TestCase):
         def side_effect():
             TEAMS[1] = 'TEST'
         mock_fetch.side_effect = side_effect
-        
+
         abbr = get_team_abbr(1)
         mock_fetch.assert_called_once()
         self.assertEqual(abbr, 'TEST')
@@ -92,7 +92,7 @@ class TestDataService(unittest.TestCase):
         }
         mock_standings.return_value = mock_data
         al, nl = fetch_standings()
-        
+
         self.assertEqual(len(al), 3)
         self.assertEqual(len(nl), 3)
         self.assertEqual(al[0]['div_name'], 'ALE')

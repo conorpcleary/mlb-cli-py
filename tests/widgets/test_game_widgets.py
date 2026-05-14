@@ -37,9 +37,10 @@ class TestGameWidgets(unittest.TestCase):
         widget = GameWidget(game)
         self.assertEqual(widget.game_id, 123)
         # Check if labels contain expected abbreviations and scores
-        labels = [w.value for w in widget._widgets if isinstance(w, ptg.Label)]
-        self.assertTrue(any("T1" in l and "5" in l for l in labels))
-        self.assertTrue(any("T2" in l and "3" in l for l in labels))
+        self.assertIn("T1", widget.away_label.value)
+        self.assertIn("5", widget.away_label.value)
+        self.assertIn("T2", widget.home_label.value)
+        self.assertIn("3", widget.home_label.value)
 
     @patch('app.widgets.game_widgets.get_team_abbr')
     def test_standing_widget_init(self, mock_abbr):
@@ -52,7 +53,7 @@ class TestGameWidgets(unittest.TestCase):
             ]
         }
         widget = StandingWidget(div_data)
-        labels = [w.value for w in widget._widgets if isinstance(w, ptg.Label)]
+        labels = [w.value for w in widget.inner_widgets if isinstance(w, ptg.Label)]
         self.assertTrue(any("AL East" in l for l in labels))
         self.assertTrue(any("T1" in l and "90" in l and "72" in l for l in labels))
 
@@ -67,8 +68,8 @@ class TestGameWidgets(unittest.TestCase):
             'status': 'Scheduled'
         }
         widget = GameWidget(game)
-        labels = [w.value for w in widget._widgets if isinstance(w, ptg.Label)]
-        self.assertTrue(all("-" in l for l in labels))
+        self.assertIn("-", widget.away_label.value)
+        self.assertIn("-", widget.home_label.value)
 
     @patch('app.widgets.game_widgets.get_team_abbr')
     def test_game_widget_none_scores(self, mock_abbr):
@@ -83,8 +84,8 @@ class TestGameWidgets(unittest.TestCase):
             'status': 'Final'
         }
         widget = GameWidget(game)
-        labels = [w.value for w in widget._widgets if isinstance(w, ptg.Label)]
-        self.assertTrue(all("-" in l for l in labels))
+        self.assertIn("-", widget.away_label.value)
+        self.assertIn("-", widget.home_label.value)
 
     def test_game_widget_handle_key(self):
         """Test GameWidget handle_key returns super().handle_key()."""
@@ -103,16 +104,16 @@ class TestGameWidgets(unittest.TestCase):
     def test_standing_widget_no_data(self):
         """Test StandingWidget with no division data."""
         widget = StandingWidget(None)
-        labels = [w.value for w in widget._widgets if isinstance(w, ptg.Label)]
+        labels = [w.value for w in widget.inner_widgets if isinstance(w, ptg.Label)]
         self.assertIn("No Data", labels[0])
 
     def test_navigation_widget_init(self):
         """Test NavigationWidget highlighting."""
         # Test yesterday active
         widget = NavigationWidget(active_page="yesterday")
-        labels = [w.value for w in widget._widgets[0]._widgets if isinstance(w, ptg.Label)]
-        self.assertTrue(any("[inverse]Yesterday" in l for l in labels))
-        self.assertFalse(any("[inverse]Today" in l for l in labels))
+        self.assertIn("[inverse]Yesterday", widget.yest_label.value)
+        self.assertNotIn("[inverse]Today", widget.today_label.value)
+        self.assertNotIn("[inverse]Standings", widget.stand_label.value)
 
     def test_chunk_list(self):
         """Test chunk_list utility."""

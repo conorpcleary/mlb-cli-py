@@ -46,10 +46,10 @@ class GameWidget(ptg.Container):
             if home_score is None:
                 home_score = "-"
 
-        self.set_widgets([
-            ptg.Label(f"[bold]{away_abbr:3}[/] {away_score:>2}"),
-            ptg.Label(f"[bold]{home_abbr:3}[/] {home_score:>2}"),
-        ])
+        self.away_label = ptg.Label(f"[bold]{away_abbr:3}[/] {away_score:>2}")
+        self.home_label = ptg.Label(f"[bold]{home_abbr:3}[/] {home_score:>2}")
+
+        self.set_widgets([self.away_label, self.home_label])
         self.border = ptg.boxes.SINGLE
 
     def handle_key(self, key):
@@ -80,7 +80,8 @@ class StandingWidget(ptg.Container):
         """
         super().__init__(**kwargs)
         if not division_data:
-            self.set_widgets([ptg.Label("No Data")])
+            self.inner_widgets = [ptg.Label("No Data")]
+            self.set_widgets(self.inner_widgets)
             return
 
         self._selectables_length = 1
@@ -106,6 +107,7 @@ class StandingWidget(ptg.Container):
             widgets.append(ptg.Label(f"{abbr} {w} {l} {gb}"))
 
         self.set_widgets(widgets)
+        self.inner_widgets = widgets
 
 
 class NavigationWidget(ptg.Container):
@@ -129,16 +131,20 @@ class NavigationWidget(ptg.Container):
         today_style = "inverse" if active_page == "today" else ""
         stand_style = "inverse" if active_page == "standings" else ""
 
-        self.set_widgets([
-            ptg.Splitter(
-                ptg.Label(f"[{yest_style}]Yesterday[/] [bold][cyan][[/]",
-                          parent_align=ptg.HorizontalAlignment.CENTER),
-                ptg.Label(f"[{today_style}]Today[/] [bold][cyan]][/]",
-                          parent_align=ptg.HorizontalAlignment.CENTER),
-                ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]",
-                          parent_align=ptg.HorizontalAlignment.CENTER),
-            )
-        ])
+        self.yest_label = ptg.Label(f"[{yest_style}]Yesterday[/] [bold][cyan][[/]",
+                                    parent_align=ptg.HorizontalAlignment.CENTER)
+        self.today_label = ptg.Label(f"[{today_style}]Today[/] [bold][cyan]][/]",
+                                     parent_align=ptg.HorizontalAlignment.CENTER)
+        self.stand_label = ptg.Label(f"[{stand_style}]Standings[/] [bold][cyan]s[/]",
+                                     parent_align=ptg.HorizontalAlignment.CENTER)
+
+        self.splitter = ptg.Splitter(
+            self.yest_label,
+            self.today_label,
+            self.stand_label,
+        )
+
+        self.set_widgets([self.splitter])
 
 
 def chunk_list(lst, n):
