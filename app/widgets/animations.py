@@ -6,7 +6,7 @@ import pytermgui as ptg
 from pytermgui.animations import Direction
 
 
-def slide_transition(window, manager, widgets, title, duration=250):
+def slide_transition(window, manager, widgets, title, duration=350):
     """
     Performs a slide-out and slide-in transition for a window.
 
@@ -50,6 +50,5 @@ def slide_transition(window, manager, widgets, title, duration=250):
     ptg.animator.animate_float(
         duration=duration,
         direction=Direction.FORWARD,
-        on_step=lambda anim: slide_step(anim, off_screen_left),
         on_finish=on_slide_out_finish
     )
