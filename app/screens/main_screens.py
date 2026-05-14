@@ -16,7 +16,7 @@ def get_yesterday_widgets(on_switch_today, on_switch_standings):
             ptg.Button("Show Standings", on_switch_standings)
         )
     ]
-    return widgets, "Yesterday's Scores"
+    return widgets, "[green]Yesterday's Scores[/]"
 
 def get_today_widgets(on_switch_yesterday, on_switch_standings):
     date_str = get_today_date()
@@ -32,7 +32,7 @@ def get_today_widgets(on_switch_yesterday, on_switch_standings):
             ptg.Button("Show Standings", on_switch_standings)
         )
     ]
-    return widgets, "Today's Schedule"
+    return widgets, "[green]Today's Schedule[/]"
 
 def get_standings_widgets(on_switch_yesterday):
     al_divs, nl_divs = fetch_standings()
@@ -47,4 +47,4 @@ def get_standings_widgets(on_switch_yesterday):
         Separator(),
         ptg.Button("Back to Scores", on_switch_yesterday)
     ]
-    return widgets, "MLB Standings"
+    return widgets, "[green]MLB Standings[/]"
