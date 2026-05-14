@@ -18,7 +18,7 @@ def fetch_teams():
         teams_data = statsapi.get('teams', {'sportId': 1})['teams']
         for t in teams_data:
             TEAMS[t['id']] = t.get('abbreviation', t['name'][:3].upper())
-    except Exception:
+    except Exception:   # pylint: disable=broad-exception-caught
         # Fallback to some common ones if API fails
         TEAMS.update({147: 'NYY', 110: 'BAL', 119: 'LAD'})
 
