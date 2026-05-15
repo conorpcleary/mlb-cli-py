@@ -57,5 +57,5 @@ class TestMainScreens(unittest.TestCase):
         self.assertEqual(len(widgets), 6)
         mock_fetch.assert_called_once()
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

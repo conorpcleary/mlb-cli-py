@@ -8,6 +8,16 @@ import statsapi
 # Global cache for team abbreviations
 TEAMS = {}
 
+# Division name mapping
+DIVISION_NAMES = {
+    200: "AL West",
+    201: "AL East",
+    202: "AL Central",
+    203: "NL West",
+    204: "NL East",
+    205: "NL Central"
+}
+
 
 def fetch_teams():
     """
@@ -66,6 +76,34 @@ def get_today_date():
     return datetime.now().strftime('%m/%d/%Y')
 
 
+def _parse_team_record(tr):
+    """Parses a team record from the API into a simplified dictionary."""
+    # Find last 10 record
+    l10 = "-"
+    if 'records' in tr and 'splitRecords' in tr['records']:
+        for split in tr['records']['splitRecords']:
+            if split['type'] == 'lastTen':
+                l10 = f"{split['wins']}-{split['losses']}"
+                break
+
+    # Format winning percentage (e.g., .500 -> 50.0%)
+    pct_val = tr.get('winningPercentage', '0')
+    try:
+        pct_float = float(pct_val) * 100
+        pct_str = f"{pct_float:.1f}%"
+    except (ValueError, TypeError):
+        pct_str = "-"
+
+    return {
+        'team_id': tr['team']['id'],
+        'w': tr['wins'],
+        'l': tr['losses'],
+        'gb': tr.get('gamesBack', tr.get('wildCardGamesBack', '-')),
+        'pct': pct_str,
+        'l10': l10
+    }
+
+
 def fetch_wild_card(league_id):
     """
     Fetches the wild card standings for a specific league.
@@ -85,14 +123,7 @@ def fetch_wild_card(league_id):
             return None
 
         record = data['records'][0]
-        teams = []
-        for tr in record.get('teamRecords', []):
-            teams.append({
-                'team_id': tr['team']['id'],
-                'w': tr['wins'],
-                'l': tr['losses'],
-                'gb': tr.get('wildCardGamesBack', '-')
-            })
+        teams = [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
 
         league_name = "AL" if league_id == 103 else "NL"
         return {
@@ -111,14 +142,28 @@ def fetch_standings():
     Returns:
         tuple: (al_divs, nl_divs, al_wc, nl_wc)
     """
-    # AL IDs: East(201), Central(202), West(200)
-    # NL IDs: East(204), Central(205), West(203)
-    data = statsapi.standings_data(leagueId='103,104')
+    try:
+        data = statsapi.get('standings', {'leagueId': '103,104'})
+        if not data or not data.get('records'):
+            return [], [], None, None
 
-    al_divs = [data.get(201), data.get(202), data.get(200)]
-    nl_divs = [data.get(204), data.get(205), data.get(203)]
+        div_map = {}
+        for record in data['records']:
+            div_id = record.get('division', {}).get('id')
+            if div_id:
+                div_map[div_id] = {
+                    'div_name': DIVISION_NAMES.get(div_id, record.get('division', {}).get('name', 'Unknown')),
+                    'teams': [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
+                }
 
-    al_wc = fetch_wild_card(103)
-    nl_wc = fetch_wild_card(104)
+        # AL IDs: East(201), Central(202), West(200)
+        # NL IDs: East(204), Central(205), West(203)
+        al_divs = [div_map.get(201), div_map.get(202), div_map.get(200)]
+        nl_divs = [div_map.get(204), div_map.get(205), div_map.get(203)]
 
-    return al_divs, nl_divs, al_wc, nl_wc
+        al_wc = fetch_wild_card(103)
+        nl_wc = fetch_wild_card(104)
+
+        return al_divs, nl_divs, al_wc, nl_wc
+    except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
+        return [], [], None, None

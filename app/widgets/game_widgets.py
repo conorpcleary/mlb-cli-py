@@ -96,7 +96,7 @@ class StandingWidget(ptg.Container):
             "NL")
 
         widgets = [ptg.Label(f"[bold]{name}[/]")]
-        widgets.append(ptg.Label("TM    W   L   GB"))
+        widgets.append(ptg.Label(" TM    W   L    GB   PCT    L10"))
 
         for team in division_data.get('teams', []):
             # Use team abbreviation instead of full name
@@ -104,7 +104,9 @@ class StandingWidget(ptg.Container):
             w = str(team['w']).rjust(3)
             l = str(team['l']).rjust(3)
             gb = str(team['gb']).rjust(4)
-            widgets.append(ptg.Label(f"{abbr} {w} {l} {gb}"))
+            pct = str(team['pct']).rjust(6)
+            l10 = str(team['l10']).rjust(6)
+            widgets.append(ptg.Label(f"{abbr} {w} {l} {gb} {pct} {l10}"))
 
         self.set_widgets(widgets)
         self.inner_widgets = widgets
