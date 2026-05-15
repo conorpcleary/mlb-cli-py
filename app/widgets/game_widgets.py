@@ -2,6 +2,7 @@
 Custom widgets and UI components for the MLB CLI application.
 Includes widgets for games, standings, navigation, and general layout.
 """
+from datetime import datetime, timezone
 import pytermgui as ptg
 from app.models.data_service import get_team_abbr
 
@@ -38,6 +39,18 @@ class GameWidget(ptg.Container):
         if status in ['Scheduled', 'Preview', 'Pre-Game']:
             away_score = "-"
             home_score = "-"
+
+            # Local start time for scheduled games
+            try:
+                # Parse as naive UTC from string
+                dt_naive = datetime.strptime(game['game_datetime'], '%Y-%m-%dT%H:%M:%SZ')
+                # Convert to aware UTC object
+                dt_aware = dt_naive.replace(tzinfo=timezone.utc)
+                # Convert to system local time
+                local_time = dt_aware.astimezone()
+                inning_text = local_time.strftime('%-I:%M %p')
+            except (ValueError, KeyError, TypeError):
+                inning_text = ""
         else:
             away_score = game.get('away_score', "-")
             home_score = game.get('home_score', "-")
@@ -46,10 +59,35 @@ class GameWidget(ptg.Container):
             if home_score is None:
                 home_score = "-"
 
-        self.away_label = ptg.Label(f"[bold]{away_abbr:3}[/] {away_score:>2}")
-        self.home_label = ptg.Label(f"[bold]{home_abbr:3}[/] {home_score:>2}")
+            # Inning data
+            inning_val = game.get('current_inning', '')
+            inning_state = game.get('inning_state', '')
+            if status == 'Final':
+                inning_text = "FINAL"
+            elif inning_val:
+                prefix = ""
+                if inning_state.lower().startswith('top'):
+                    prefix = "TOP"
+                elif inning_state.lower().startswith('bottom'):
+                    prefix = "BOT"
+                inning_text = f"{prefix} {inning_val}"
+            else:
+                inning_text = ""
 
-        self.set_widgets([self.away_label, self.home_label])
+        # Away Team Row
+        self.away_info = ptg.Splitter(
+            ptg.Label(f"[bold]{away_abbr:3}[/] {away_score:>2}"),
+            ptg.Label("", parent_align=ptg.HorizontalAlignment.RIGHT)
+        )
+
+        # Home Team Row + Status (Right Justified)
+        # We use a Splitter for the second row to separate Home and Status
+        self.home_info = ptg.Splitter(
+            ptg.Label(f"[bold]{home_abbr:3}[/] {home_score:>2}"),
+            ptg.Label(f"[italic]{inning_text}[/]", parent_align=ptg.HorizontalAlignment.CENTER)
+        )
+
+        self.set_widgets([self.away_info, self.home_info])
         self.border = ptg.boxes.SINGLE
 
     def handle_key(self, key):
