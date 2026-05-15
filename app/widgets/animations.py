@@ -6,7 +6,7 @@ import pytermgui as ptg
 from pytermgui.animations import Direction
 
 
-def slide_transition(window, manager, widgets, title, duration=350):
+def slide_transition(window, manager, widgets, title, duration=290):
     """
     Performs a slide-out and slide-in transition for a window.
 

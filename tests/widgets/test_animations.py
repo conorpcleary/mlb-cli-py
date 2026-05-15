@@ -30,7 +30,7 @@ class TestAnimations(unittest.TestCase):
         # 1. Verify first animation call (Slide-out)
         self.assertEqual(mock_animate.call_count, 1)
         _, kwargs = mock_animate.call_args
-        self.assertEqual(kwargs['duration'], 350)
+        self.assertEqual(kwargs['duration'], 290)
         self.assertEqual(kwargs['direction'], ptg.animations.Direction.FORWARD)
 
         # 2. Test on_finish for slide-out
