@@ -92,7 +92,7 @@ def get_today_date():
     return datetime.now().strftime('%m/%d/%Y')
 
 
-def _parse_team_record(tr):
+def _parse_team_record(tr, is_wild_card=False):
     """Parses a team record from the API into a simplified dictionary."""
     # Find last 10 record
     l10 = "-"
@@ -110,11 +110,17 @@ def _parse_team_record(tr):
     except (ValueError, TypeError):
         pct_str = "-"
 
+    # Prioritize wildCardGamesBack for wild card view, else use gamesBack
+    if is_wild_card:
+        gb = tr.get('wildCardGamesBack', tr.get('gamesBack', '-'))
+    else:
+        gb = tr.get('gamesBack', '-')
+
     return {
         'team_id': tr['team']['id'],
         'w': tr['wins'],
         'l': tr['losses'],
-        'gb': tr.get('gamesBack', tr.get('wildCardGamesBack', '-')),
+        'gb': gb,
         'pct': pct_str,
         'l10': l10
     }
@@ -144,7 +150,7 @@ def fetch_wild_card(league_id):
             return None
 
         record = data['records'][0]
-        teams = [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
+        teams = [_parse_team_record(tr, is_wild_card=True) for tr in record.get('teamRecords', [])]
 
         league_name = "AL" if league_id == 103 else "NL"
         result = {
@@ -183,7 +189,10 @@ def fetch_standings():
                     'div_name': DIVISION_NAMES.get(
                         div_id, record.get('division', {}).get('name', 'Unknown')
                     ),
-                    'teams': [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
+                    'teams': [
+                        _parse_team_record(tr, is_wild_card=False)
+                        for tr in record.get('teamRecords', [])
+                    ]
                 }
 
         # AL IDs: East(201), Central(202), West(200)

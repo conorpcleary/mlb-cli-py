@@ -96,20 +96,34 @@ class StandingWidget(ptg.Container):
             "NL")
 
         widgets = [ptg.Label(f"[bold]{name}[/]")]
-        widgets.append(ptg.Label(" TM    W   L    GB   PCT    L10"))
+        widgets.append(self._create_header())
 
         for team in division_data.get('teams', []):
-            # Use team abbreviation instead of full name
-            abbr = get_team_abbr(team['team_id']).ljust(4)
-            w = str(team['w']).rjust(3)
-            l = str(team['l']).rjust(3)
-            gb = str(team['gb']).rjust(4)
-            pct = str(team['pct']).rjust(6)
-            l10 = str(team['l10']).rjust(6)
-            widgets.append(ptg.Label(f"{abbr} {w} {l} {gb} {pct} {l10}"))
+            widgets.append(self._create_team_row(team))
 
         self.set_widgets(widgets)
         self.inner_widgets = widgets
+
+    def _create_header(self):
+        """Creates the header row for the standings."""
+        tm_lbl = "TM".ljust(4)
+        w_lbl = "W".rjust(3)
+        l_lbl = "L".rjust(3)
+        gb_lbl = "GB".rjust(4)
+        pct_lbl = "PCT".rjust(6)
+        l10_lbl = "L10".rjust(6)
+        return ptg.Label(f"[bold]{tm_lbl} {w_lbl} {l_lbl} {gb_lbl} {pct_lbl} {l10_lbl}[/]")
+
+    def _create_team_row(self, team):
+        """Creates a data row for a single team."""
+        # Use team abbreviation instead of full name
+        abbr = get_team_abbr(team['team_id']).ljust(4)
+        w = str(team['w']).rjust(3)
+        l = str(team['l']).rjust(3)
+        gb = str(team['gb']).rjust(4)
+        pct = str(team['pct']).rjust(6)
+        l10 = str(team['l10']).rjust(6)
+        return ptg.Label(f"{abbr} {w} {l} {gb} {pct} {l10}")
 
 
 class NavigationWidget(ptg.Container):

@@ -138,10 +138,10 @@ class TestDataService(unittest.TestCase):
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 4)
 
-    @patch('app.models.data_service.get_cached_data', return_value=None)
     @patch('app.models.data_service.set_cached_data')
+    @patch('app.models.data_service.get_cached_data', return_value=None)
     @patch('statsapi.get')
-    def test_fetch_wild_card_success(self, mock_get, _mock_set, _mock_get_c):
+    def test_fetch_wild_card_success(self, mock_get, _mock_get_c, _mock_set):
         """Test successful wild card fetching with pct and l10."""
         mock_get.return_value = {
             'records': [{
@@ -150,7 +150,8 @@ class TestDataService(unittest.TestCase):
                         'team': {'id': 1},
                         'wins': 90,
                         'losses': 72,
-                        'wildCardGamesBack': '-',
+                        'gamesBack': '2.0',
+                        'wildCardGamesBack': '+5.5',
                         'winningPercentage': '.556',
                         'records': {
                             'splitRecords': [
@@ -165,6 +166,7 @@ class TestDataService(unittest.TestCase):
         self.assertEqual(result['div_name'], 'AL Wild Card')
         self.assertEqual(len(result['teams']), 1)
         self.assertEqual(result['teams'][0]['w'], 90)
+        self.assertEqual(result['teams'][0]['gb'], '+5.5')
         self.assertEqual(result['teams'][0]['pct'], '55.6%')
         self.assertEqual(result['teams'][0]['l10'], '6-4')
 
@@ -246,7 +248,15 @@ class TestDataService(unittest.TestCase):
             'records': [
                 {
                     'division': {'id': 201, 'name': 'AL East'},
-                    'teamRecords': [{'team': {'id': 1}, 'wins': 90, 'losses': 72}]
+                    'teamRecords': [
+                        {
+                            'team': {'id': 1},
+                            'wins': 90,
+                            'losses': 72,
+                            'gamesBack': '1.0',
+                            'wildCardGamesBack': '0.0'
+                        }
+                    ]
                 },
                 {
                     'division': {'id': 204, 'name': 'NL East'},
@@ -259,6 +269,8 @@ class TestDataService(unittest.TestCase):
         al, nl, al_wc, nl_wc = fetch_standings()
 
         self.assertEqual(al[0]['div_name'], 'AL East')
+        # Verify it picked 'gamesBack' (1.0) over 'wildCardGamesBack' (0.0)
+        self.assertEqual(al[0]['teams'][0]['gb'], '1.0')
         self.assertIsNone(al[1])
         self.assertEqual(nl[0]['div_name'], 'NL East')
         self.assertEqual(al_wc['div_name'], '103 WC')
