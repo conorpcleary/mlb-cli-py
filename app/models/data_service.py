@@ -152,7 +152,9 @@ def fetch_standings():
             div_id = record.get('division', {}).get('id')
             if div_id:
                 div_map[div_id] = {
-                    'div_name': DIVISION_NAMES.get(div_id, record.get('division', {}).get('name', 'Unknown')),
+                    'div_name': DIVISION_NAMES.get(
+                        div_id, record.get('division', {}).get('name', 'Unknown')
+                    ),
                     'teams': [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
                 }
 

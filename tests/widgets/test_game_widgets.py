@@ -55,7 +55,10 @@ class TestGameWidgets(unittest.TestCase):
         widget = StandingWidget(div_data)
         labels = [w.value for w in widget.inner_widgets if isinstance(w, ptg.Label)]
         self.assertTrue(any("AL East" in l for l in labels))
-        self.assertTrue(any("T1" in l and "90" in l and "72" in l and "55.6%" in l and "6-4" in l for l in labels))
+        self.assertTrue(any(
+            "T1" in l and "90" in l and "72" in l and "55.6%" in l and "6-4" in l
+            for l in labels
+        ))
 
     @patch('app.widgets.game_widgets.get_team_abbr')
     def test_game_widget_scheduled(self, mock_abbr):

@@ -4,17 +4,18 @@ Unit tests for the main mlb_cli application.
 import unittest
 from unittest.mock import patch, MagicMock
 import pytermgui as ptg
-from mlb_cli import MLBApp
+from mlb_cli import MLBApp, main
 
 class TestMLBApp(unittest.TestCase):
     """Test cases for the MLBApp class."""
 
-    @patch('mlb_cli.fetch_teams')
-    @patch('mlb_cli.ptg.WindowManager')
-    def setUp(self, mock_manager, mock_fetch):
+    def setUp(self):
         """Initialize MLBApp with mocked WindowManager."""
-        self.app = MLBApp()
-        self.app.main_window = MagicMock(spec=ptg.Window)
+        with patch('mlb_cli.fetch_teams'), \
+             patch('mlb_cli.ptg.WindowManager') as mock_manager:
+            self.app = MLBApp()
+            self.app.manager = mock_manager.return_value
+            self.app.main_window = MagicMock(spec=ptg.Window)
 
     def test_init(self):
         """Test MLBApp initialization."""
@@ -26,7 +27,7 @@ class TestMLBApp(unittest.TestCase):
         """Test initial call to set_window_data."""
         widgets = [ptg.Label("test")]
         self.app.set_window_data(widgets, "Title", "page1")
-        
+
         self.assertTrue(self.app.is_initialized)
         self.assertEqual(self.app.active_page, "page1")
         self.app.main_window.set_widgets.assert_called_with(widgets)
@@ -44,9 +45,9 @@ class TestMLBApp(unittest.TestCase):
         self.app.is_initialized = True
         self.app.active_page = "page1"
         widgets = [ptg.Label("test")]
-        
+
         self.app.set_window_data(widgets, "New Title", "page2")
-        
+
         self.assertEqual(self.app.active_page, "page2")
         mock_transition.assert_called_once()
 
@@ -77,26 +78,25 @@ class TestMLBApp(unittest.TestCase):
         self.app.manager.stop.assert_called_once()
 
     @patch('mlb_cli.ptg.Window')
-    def test_run(self, mock_window):
+    def test_run(self, _mock_window):
         """Test main run loop setup."""
         # Mock terminal height
         self.app.manager.terminal.height = 40
-        
+
         # Mock run to exit immediately
         self.app.manager.run.side_effect = None
-        
-        with patch.object(self.app, 'update_to_yesterday'):
+
+        with patch.object(self.app, 'update_to_yesterday') as mock_update:
             self.app.run()
-            
+
             self.app.manager.add.assert_called_once()
-            self.app.update_to_yesterday.assert_called_once()
+            mock_update.assert_called_once()
             self.app.manager.run.assert_called_once()
 
     @patch('mlb_cli.MLBApp')
     def test_main(self, mock_app_class):
         """Test the main() entry point."""
         mock_app_instance = mock_app_class.return_value
-        from mlb_cli import main
         main()
         mock_app_class.assert_called_once()
         mock_app_instance.run.assert_called_once()

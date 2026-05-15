@@ -156,19 +156,19 @@ class TestDataService(unittest.TestCase):
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('statsapi.get')
-    def test_fetch_standings_no_data(self, mock_get, mock_wc):
+    def test_fetch_standings_no_data(self, mock_get, _mock_wc):
         """Test fetch_standings when API returns no data."""
         mock_get.return_value = None
-        al, nl, al_wc, nl_wc = fetch_standings()
+        al, nl, _, _ = fetch_standings()
         self.assertEqual(al, [])
         self.assertEqual(nl, [])
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('statsapi.get')
-    def test_fetch_standings_failure(self, mock_get, mock_wc):
+    def test_fetch_standings_failure(self, mock_get, _mock_wc):
         """Test fetch_standings handling API failure."""
         mock_get.side_effect = RuntimeError("API Down")
-        al, nl, al_wc, nl_wc = fetch_standings()
+        al, nl, _, _ = fetch_standings()
         self.assertEqual(al, [])
         self.assertEqual(nl, [])
 

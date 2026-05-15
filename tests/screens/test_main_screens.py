@@ -46,8 +46,16 @@ class TestMainScreens(unittest.TestCase):
     def test_get_standings_widgets(self, mock_fetch):
         """Test standings screen generation."""
         # Mock 3 divisions for AL and NL
-        al_divs = [{'div_name': 'AL E', 'teams': []}, {'div_name': 'AL C', 'teams': []}, {'div_name': 'AL W', 'teams': []}]
-        nl_divs = [{'div_name': 'NL E', 'teams': []}, {'div_name': 'NL C', 'teams': []}, {'div_name': 'NL W', 'teams': []}]
+        al_divs = [
+            {'div_name': 'AL E', 'teams': []},
+            {'div_name': 'AL C', 'teams': []},
+            {'div_name': 'AL W', 'teams': []}
+        ]
+        nl_divs = [
+            {'div_name': 'NL E', 'teams': []},
+            {'div_name': 'NL C', 'teams': []},
+            {'div_name': 'NL W', 'teams': []}
+        ]
         mock_fetch.return_value = (al_divs, nl_divs, {}, {})
 
         widgets, title = get_standings_widgets(MagicMock())
