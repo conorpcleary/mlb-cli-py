@@ -4,9 +4,14 @@ Provides functions for team abbreviations, schedules, and standings.
 """
 from datetime import datetime, timedelta
 import statsapi
+from app.models.cache_service import get_cached_data, set_cached_data
 
 # Global cache for team abbreviations
 TEAMS = {}
+
+# TTL Policies (in seconds)
+LIVE_DATA_TTL = 300  # 5 minutes
+
 
 # Division name mapping
 DIVISION_NAMES = {
@@ -53,7 +58,18 @@ def fetch_schedule(date_str):
     Returns:
         list: A list of game dictionaries.
     """
-    return statsapi.schedule(date=date_str)
+    cache_key = f"schedule:{date_str}"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return cached
+
+    data = statsapi.schedule(date=date_str)
+
+    # Policy: Today has TTL, Yesterday doesn't
+    ttl = LIVE_DATA_TTL if date_str == get_today_date() else None
+    set_cached_data(cache_key, data, ttl=ttl)
+
+    return data
 
 
 def get_yesterday_date():
@@ -76,7 +92,7 @@ def get_today_date():
     return datetime.now().strftime('%m/%d/%Y')
 
 
-def _parse_team_record(tr):
+def _parse_team_record(tr, is_wild_card=False):
     """Parses a team record from the API into a simplified dictionary."""
     # Find last 10 record
     l10 = "-"
@@ -94,11 +110,17 @@ def _parse_team_record(tr):
     except (ValueError, TypeError):
         pct_str = "-"
 
+    # Prioritize wildCardGamesBack for wild card view, else use gamesBack
+    if is_wild_card:
+        gb = tr.get('wildCardGamesBack', tr.get('gamesBack', '-'))
+    else:
+        gb = tr.get('gamesBack', '-')
+
     return {
         'team_id': tr['team']['id'],
         'w': tr['wins'],
         'l': tr['losses'],
-        'gb': tr.get('gamesBack', tr.get('wildCardGamesBack', '-')),
+        'gb': gb,
         'pct': pct_str,
         'l10': l10
     }
@@ -114,6 +136,11 @@ def fetch_wild_card(league_id):
     Returns:
         dict: Wild card standings data.
     """
+    cache_key = f"wildcard:{league_id}"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         data = statsapi.get('standings', {
             'leagueId': league_id,
@@ -123,13 +150,15 @@ def fetch_wild_card(league_id):
             return None
 
         record = data['records'][0]
-        teams = [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
+        teams = [_parse_team_record(tr, is_wild_card=True) for tr in record.get('teamRecords', [])]
 
         league_name = "AL" if league_id == 103 else "NL"
-        return {
+        result = {
             'div_name': f"{league_name} Wild Card",
             'teams': teams[:7]
         }
+        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+        return result
     except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
         return None
 
@@ -142,6 +171,11 @@ def fetch_standings():
     Returns:
         tuple: (al_divs, nl_divs, al_wc, nl_wc)
     """
+    cache_key = "standings:full"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return tuple(cached)
+
     try:
         data = statsapi.get('standings', {'leagueId': '103,104'})
         if not data or not data.get('records'):
@@ -155,7 +189,10 @@ def fetch_standings():
                     'div_name': DIVISION_NAMES.get(
                         div_id, record.get('division', {}).get('name', 'Unknown')
                     ),
-                    'teams': [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
+                    'teams': [
+                        _parse_team_record(tr, is_wild_card=False)
+                        for tr in record.get('teamRecords', [])
+                    ]
                 }
 
         # AL IDs: East(201), Central(202), West(200)
@@ -166,6 +203,8 @@ def fetch_standings():
         al_wc = fetch_wild_card(103)
         nl_wc = fetch_wild_card(104)
 
-        return al_divs, nl_divs, al_wc, nl_wc
+        result = (al_divs, nl_divs, al_wc, nl_wc)
+        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+        return result
     except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
         return [], [], None, None
