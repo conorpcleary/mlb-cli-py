@@ -25,9 +25,14 @@ class MLBApp:
         self.static_height = 0  # Will be set in run()
         self.main_window = None
         self.is_initialized = False
+        self.active_page = None
 
-    def set_window_data(self, widgets, title):
+    def set_window_data(self, widgets, title, page_name):
         """Sets content for the main window, using animation if already initialized."""
+        if self.active_page == page_name:
+            return
+
+        self.active_page = page_name
         if not self.is_initialized:
             self.is_initialized = True
             self.main_window.set_widgets(widgets)
@@ -45,20 +50,20 @@ class MLBApp:
         """Transitions the main window to show yesterday's scores."""
         widgets, title = get_yesterday_widgets(
             self.update_to_today, self.update_to_standings)
-        self.set_window_data(widgets, title)
+        self.set_window_data(widgets, title, "yesterday")
         return True
 
     def update_to_today(self, *_args, **_kwargs):
         """Transitions the main window to show today's schedule."""
         widgets, title = get_today_widgets(
             self.update_to_yesterday, self.update_to_standings)
-        self.set_window_data(widgets, title)
+        self.set_window_data(widgets, title, "today")
         return True
 
     def update_to_standings(self, *_args, **_kwargs):
         """Transitions the main window to show current MLB standings."""
         widgets, title = get_standings_widgets(self.update_to_yesterday)
-        self.set_window_data(widgets, title)
+        self.set_window_data(widgets, title, "standings")
         return True
 
     def exit_app(self, *_args, **_kwargs):
