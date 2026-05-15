@@ -17,6 +17,7 @@ from app.models.data_service import (
 
 class TestDataService(unittest.TestCase):
     """Test cases for data_service.py functions."""
+    # pylint: disable=too-many-public-methods
 
     def setUp(self):
         """Reset TEAMS cache before each test."""
@@ -68,9 +69,45 @@ class TestDataService(unittest.TestCase):
     def test_fetch_schedule(self, mock_schedule):
         """Test fetch_schedule calls statsapi.schedule."""
         mock_schedule.return_value = [{'game_id': 123}]
+        # Mock cache miss
+        with patch('app.models.data_service.get_cached_data', return_value=None), \
+             patch('app.models.data_service.set_cached_data'):
+            result = fetch_schedule('01/01/2024')
+            mock_schedule.assert_called_with(date='01/01/2024')
+            self.assertEqual(result, [{'game_id': 123}])
+
+    @patch('app.models.data_service.get_cached_data')
+    def test_fetch_schedule_cache_hit(self, mock_cache):
+        """Test fetch_schedule returns cached data."""
+        mock_cache.return_value = [{'game_id': 999}]
         result = fetch_schedule('01/01/2024')
-        mock_schedule.assert_called_with(date='01/01/2024')
-        self.assertEqual(result, [{'game_id': 123}])
+        self.assertEqual(result, [{'game_id': 999}])
+
+    @patch('app.models.data_service.set_cached_data')
+    @patch('app.models.data_service.get_cached_data')
+    @patch('statsapi.schedule')
+    def test_fetch_schedule_cache_miss_today(self, mock_schedule, mock_get_cache, mock_set_cache):
+        """Test fetch_schedule sets TTL for today's schedule."""
+        mock_get_cache.return_value = None
+        mock_schedule.return_value = [{'id': 1}]
+
+        with patch('app.models.data_service.get_today_date', return_value='01/01/2024'):
+            fetch_schedule('01/01/2024')
+            mock_set_cache.assert_called_with(
+                'schedule:01/01/2024', [{'id': 1}], ttl=300
+            )
+
+    @patch('app.models.data_service.set_cached_data')
+    @patch('app.models.data_service.get_cached_data')
+    @patch('statsapi.schedule')
+    def test_fetch_schedule_cache_miss_yesterday(self, mock_sched, mock_get_c, mock_set_c):
+        """Test fetch_schedule uses no TTL for other dates (yesterday)."""
+        mock_get_c.return_value = None
+        mock_sched.return_value = [{'id': 1}]
+
+        with patch('app.models.data_service.get_today_date', return_value='01/02/2024'):
+            fetch_schedule('01/01/2024')
+            mock_set_c.assert_called_with('schedule:01/01/2024', [{'id': 1}], ttl=None)
 
     @patch('app.models.data_service.datetime')
     def test_get_today_date(self, mock_datetime):
@@ -84,8 +121,27 @@ class TestDataService(unittest.TestCase):
         mock_datetime.now.return_value = datetime(2024, 1, 2)
         self.assertEqual(get_yesterday_date(), '01/01/2024')
 
+    @patch('app.models.data_service.get_cached_data')
     @patch('statsapi.get')
-    def test_fetch_wild_card_success(self, mock_get):
+    def test_fetch_wild_card_cache_hit(self, _mock_get, mock_cache):
+        """Test fetch_wild_card returns cached data."""
+        mock_cache.return_value = {'div_name': 'Cached WC'}
+        result = fetch_wild_card(103)
+        self.assertEqual(result['div_name'], 'Cached WC')
+
+    @patch('app.models.data_service.get_cached_data')
+    @patch('statsapi.get')
+    def test_fetch_standings_cache_hit(self, _mock_get, mock_cache):
+        """Test fetch_standings returns cached data as tuple."""
+        mock_cache.return_value = [[], [], {}, {}]
+        result = fetch_standings()
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 4)
+
+    @patch('app.models.data_service.get_cached_data', return_value=None)
+    @patch('app.models.data_service.set_cached_data')
+    @patch('statsapi.get')
+    def test_fetch_wild_card_success(self, mock_get, _mock_set, _mock_get_c):
         """Test successful wild card fetching with pct and l10."""
         mock_get.return_value = {
             'records': [{
@@ -116,8 +172,10 @@ class TestDataService(unittest.TestCase):
     def test_fetch_wild_card_failure(self, mock_get):
         """Test fetch_wild_card handling API failure."""
         mock_get.side_effect = RuntimeError("API Down")
-        result = fetch_wild_card(103)
-        self.assertIsNone(result)
+        # Mock cache miss
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            result = fetch_wild_card(103)
+            self.assertIsNone(result)
 
     @patch('statsapi.get')
     def test_fetch_wild_card_truncation(self, mock_get):
@@ -127,20 +185,22 @@ class TestDataService(unittest.TestCase):
                 'teamRecords': [{'team': {'id': i}, 'wins': 0, 'losses': 0} for i in range(10)]
             }]
         }
-        result = fetch_wild_card(103)
-        self.assertEqual(len(result['teams']), 7)
+        with patch('app.models.data_service.get_cached_data', return_value=None), \
+             patch('app.models.data_service.set_cached_data'):
+            result = fetch_wild_card(103)
+            self.assertEqual(len(result['teams']), 7)
 
     @patch('statsapi.get')
     def test_fetch_wild_card_no_records(self, mock_get):
         """Test fetch_wild_card when API returns no records."""
         mock_get.return_value = {'records': []}
-        result = fetch_wild_card(103)
-        self.assertIsNone(result)
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            result = fetch_wild_card(103)
+            self.assertIsNone(result)
 
     @patch('statsapi.get')
     def test_parse_team_record_invalid_pct(self, mock_get):
         """Test _parse_team_record with invalid winningPercentage."""
-        # We can test this by calling fetch_wild_card with mock data containing invalid pct
         mock_get.return_value = {
             'records': [{
                 'teamRecords': [{
@@ -151,30 +211,36 @@ class TestDataService(unittest.TestCase):
                 }]
             }]
         }
-        result = fetch_wild_card(103)
-        self.assertEqual(result['teams'][0]['pct'], '-')
+        with patch('app.models.data_service.get_cached_data', return_value=None), \
+             patch('app.models.data_service.set_cached_data'):
+            result = fetch_wild_card(103)
+            self.assertEqual(result['teams'][0]['pct'], '-')
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('statsapi.get')
     def test_fetch_standings_no_data(self, mock_get, _mock_wc):
         """Test fetch_standings when API returns no data."""
         mock_get.return_value = None
-        al, nl, _, _ = fetch_standings()
-        self.assertEqual(al, [])
-        self.assertEqual(nl, [])
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            al, nl, _, _ = fetch_standings()
+            self.assertEqual(al, [])
+            self.assertEqual(nl, [])
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('statsapi.get')
     def test_fetch_standings_failure(self, mock_get, _mock_wc):
         """Test fetch_standings handling API failure."""
         mock_get.side_effect = RuntimeError("API Down")
-        al, nl, _, _ = fetch_standings()
-        self.assertEqual(al, [])
-        self.assertEqual(nl, [])
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            al, nl, _, _ = fetch_standings()
+            self.assertEqual(al, [])
+            self.assertEqual(nl, [])
 
     @patch('app.models.data_service.fetch_wild_card')
+    @patch('app.models.data_service.get_cached_data', return_value=None)
+    @patch('app.models.data_service.set_cached_data')
     @patch('statsapi.get')
-    def test_fetch_standings(self, mock_get, mock_wc):
+    def test_fetch_standings(self, mock_get, _mock_set, _mock_get_c, mock_wc):
         """Test fetch_standings maps division IDs and includes wild card."""
         mock_get.return_value = {
             'records': [
@@ -192,8 +258,6 @@ class TestDataService(unittest.TestCase):
 
         al, nl, al_wc, nl_wc = fetch_standings()
 
-        # Should find AL East (201) in AL, and NL East (204) in NL
-        # Central and West will be None as they are not in mock_get
         self.assertEqual(al[0]['div_name'], 'AL East')
         self.assertIsNone(al[1])
         self.assertEqual(nl[0]['div_name'], 'NL East')

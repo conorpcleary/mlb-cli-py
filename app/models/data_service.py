@@ -4,9 +4,14 @@ Provides functions for team abbreviations, schedules, and standings.
 """
 from datetime import datetime, timedelta
 import statsapi
+from app.models.cache_service import get_cached_data, set_cached_data
 
 # Global cache for team abbreviations
 TEAMS = {}
+
+# TTL Policies (in seconds)
+LIVE_DATA_TTL = 300  # 5 minutes
+
 
 # Division name mapping
 DIVISION_NAMES = {
@@ -53,7 +58,18 @@ def fetch_schedule(date_str):
     Returns:
         list: A list of game dictionaries.
     """
-    return statsapi.schedule(date=date_str)
+    cache_key = f"schedule:{date_str}"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return cached
+
+    data = statsapi.schedule(date=date_str)
+
+    # Policy: Today has TTL, Yesterday doesn't
+    ttl = LIVE_DATA_TTL if date_str == get_today_date() else None
+    set_cached_data(cache_key, data, ttl=ttl)
+
+    return data
 
 
 def get_yesterday_date():
@@ -114,6 +130,11 @@ def fetch_wild_card(league_id):
     Returns:
         dict: Wild card standings data.
     """
+    cache_key = f"wildcard:{league_id}"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         data = statsapi.get('standings', {
             'leagueId': league_id,
@@ -126,10 +147,12 @@ def fetch_wild_card(league_id):
         teams = [_parse_team_record(tr) for tr in record.get('teamRecords', [])]
 
         league_name = "AL" if league_id == 103 else "NL"
-        return {
+        result = {
             'div_name': f"{league_name} Wild Card",
             'teams': teams[:7]
         }
+        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+        return result
     except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
         return None
 
@@ -142,6 +165,11 @@ def fetch_standings():
     Returns:
         tuple: (al_divs, nl_divs, al_wc, nl_wc)
     """
+    cache_key = "standings:full"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return tuple(cached)
+
     try:
         data = statsapi.get('standings', {'leagueId': '103,104'})
         if not data or not data.get('records'):
@@ -166,6 +194,8 @@ def fetch_standings():
         al_wc = fetch_wild_card(103)
         nl_wc = fetch_wild_card(104)
 
-        return al_divs, nl_divs, al_wc, nl_wc
+        result = (al_divs, nl_divs, al_wc, nl_wc)
+        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+        return result
     except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
         return [], [], None, None
