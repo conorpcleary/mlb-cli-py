@@ -46,6 +46,26 @@ Run the application using the main entry point:
 python3 mlb_cli.py
 ```
 
+## Testing
+
+The project includes a comprehensive unit test suite covering data services, screen layouts, and custom widgets.
+
+### Running Tests
+
+To run the full test suite using `pytest`:
+
+```bash
+pytest
+```
+
+To run tests with coverage reporting:
+
+```bash
+pytest --cov=app tests/
+```
+
+The tests utilize `unittest.mock` to ensure isolation from external APIs and UI side effects.
+
 ### Controls
 
 | Key | Action |
