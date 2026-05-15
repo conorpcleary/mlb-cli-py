@@ -44,18 +44,21 @@ class TestGameWidgets(unittest.TestCase):
 
     @patch('app.widgets.game_widgets.get_team_abbr')
     def test_standing_widget_init(self, mock_abbr):
-        """Test StandingWidget data mapping."""
+        """Test StandingWidget data mapping with pct and l10."""
         mock_abbr.side_effect = lambda x: f"T{x}"
         div_data = {
             'div_name': 'American League East',
             'teams': [
-                {'team_id': 1, 'w': 90, 'l': 72, 'gb': '-'}
+                {'team_id': 1, 'w': 90, 'l': 72, 'gb': '-', 'pct': '55.6%', 'l10': '6-4'}
             ]
         }
         widget = StandingWidget(div_data)
         labels = [w.value for w in widget.inner_widgets if isinstance(w, ptg.Label)]
         self.assertTrue(any("AL East" in l for l in labels))
-        self.assertTrue(any("T1" in l and "90" in l and "72" in l for l in labels))
+        self.assertTrue(any(
+            "T1" in l and "90" in l and "72" in l and "55.6%" in l and "6-4" in l
+            for l in labels
+        ))
 
     @patch('app.widgets.game_widgets.get_team_abbr')
     def test_game_widget_scheduled(self, mock_abbr):
@@ -130,5 +133,5 @@ class TestGameWidgets(unittest.TestCase):
         self.assertEqual(len(grid), 2)
         self.assertEqual(len(grid[0]), 3) # Row length is 3
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

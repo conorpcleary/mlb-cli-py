@@ -60,5 +60,5 @@ class TestAnimations(unittest.TestCase):
         on_step_in(mock_anim_in)
         self.assertEqual(mock_window.pos, (28, 5))
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

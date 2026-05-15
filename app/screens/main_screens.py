@@ -66,14 +66,20 @@ def get_standings_widgets(_on_switch_yesterday):
     Returns:
         tuple: (list of widgets, title string)
     """
-    al_divs, nl_divs = fetch_standings()
+    al_divs, nl_divs, al_wc, nl_wc = fetch_standings()
 
+    # Define row structure with weights to ensure uniform width
+    # 2 columns for divisions, centered 1 column (using padding) for Wild Cards
     widgets = [
         NavigationWidget(active_page="standings"),
         ptg.Label("[bold]MLB Standings[/]"),
-        # AL Row
-        tuple(StandingWidget(d) for d in al_divs),
-        # NL Row
-        tuple(StandingWidget(d) for d in nl_divs),
+        # East Row
+        ptg.Splitter(StandingWidget(al_divs[0]), StandingWidget(nl_divs[0])),
+        # Central Row
+        ptg.Splitter(StandingWidget(al_divs[1]), StandingWidget(nl_divs[1])),
+        # West Row
+        ptg.Splitter(StandingWidget(al_divs[2]), StandingWidget(nl_divs[2])),
+        # Wild Card Row (AL and NL)
+        ptg.Splitter(StandingWidget(al_wc), StandingWidget(nl_wc)),
     ]
     return widgets, "[green]MLB Standings[/]"

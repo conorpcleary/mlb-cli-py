@@ -10,6 +10,7 @@ from app.models.data_service import (
     fetch_schedule,
     get_yesterday_date,
     get_today_date,
+    fetch_wild_card,
     fetch_standings,
     TEAMS
 )
@@ -83,20 +84,121 @@ class TestDataService(unittest.TestCase):
         mock_datetime.now.return_value = datetime(2024, 1, 2)
         self.assertEqual(get_yesterday_date(), '01/01/2024')
 
-    @patch('statsapi.standings_data')
-    def test_fetch_standings(self, mock_standings):
-        """Test fetch_standings maps division IDs correctly."""
-        mock_data = {
-            201: {'div_name': 'ALE'}, 202: {'div_name': 'ALC'}, 200: {'div_name': 'ALW'},
-            204: {'div_name': 'NLE'}, 205: {'div_name': 'NLC'}, 203: {'div_name': 'NLW'}
+    @patch('statsapi.get')
+    def test_fetch_wild_card_success(self, mock_get):
+        """Test successful wild card fetching with pct and l10."""
+        mock_get.return_value = {
+            'records': [{
+                'teamRecords': [
+                    {
+                        'team': {'id': 1},
+                        'wins': 90,
+                        'losses': 72,
+                        'wildCardGamesBack': '-',
+                        'winningPercentage': '.556',
+                        'records': {
+                            'splitRecords': [
+                                {'type': 'lastTen', 'wins': 6, 'losses': 4}
+                            ]
+                        }
+                    }
+                ]
+            }]
         }
-        mock_standings.return_value = mock_data
-        al, nl = fetch_standings()
+        result = fetch_wild_card(103)
+        self.assertEqual(result['div_name'], 'AL Wild Card')
+        self.assertEqual(len(result['teams']), 1)
+        self.assertEqual(result['teams'][0]['w'], 90)
+        self.assertEqual(result['teams'][0]['pct'], '55.6%')
+        self.assertEqual(result['teams'][0]['l10'], '6-4')
 
-        self.assertEqual(len(al), 3)
-        self.assertEqual(len(nl), 3)
-        self.assertEqual(al[0]['div_name'], 'ALE')
-        self.assertEqual(nl[0]['div_name'], 'NLE')
+    @patch('statsapi.get')
+    def test_fetch_wild_card_failure(self, mock_get):
+        """Test fetch_wild_card handling API failure."""
+        mock_get.side_effect = RuntimeError("API Down")
+        result = fetch_wild_card(103)
+        self.assertIsNone(result)
 
-if __name__ == '__main__':
+    @patch('statsapi.get')
+    def test_fetch_wild_card_truncation(self, mock_get):
+        """Test that wild card teams are truncated to 7."""
+        mock_get.return_value = {
+            'records': [{
+                'teamRecords': [{'team': {'id': i}, 'wins': 0, 'losses': 0} for i in range(10)]
+            }]
+        }
+        result = fetch_wild_card(103)
+        self.assertEqual(len(result['teams']), 7)
+
+    @patch('statsapi.get')
+    def test_fetch_wild_card_no_records(self, mock_get):
+        """Test fetch_wild_card when API returns no records."""
+        mock_get.return_value = {'records': []}
+        result = fetch_wild_card(103)
+        self.assertIsNone(result)
+
+    @patch('statsapi.get')
+    def test_parse_team_record_invalid_pct(self, mock_get):
+        """Test _parse_team_record with invalid winningPercentage."""
+        # We can test this by calling fetch_wild_card with mock data containing invalid pct
+        mock_get.return_value = {
+            'records': [{
+                'teamRecords': [{
+                    'team': {'id': 1},
+                    'wins': 90,
+                    'losses': 72,
+                    'winningPercentage': 'invalid'
+                }]
+            }]
+        }
+        result = fetch_wild_card(103)
+        self.assertEqual(result['teams'][0]['pct'], '-')
+
+    @patch('app.models.data_service.fetch_wild_card')
+    @patch('statsapi.get')
+    def test_fetch_standings_no_data(self, mock_get, _mock_wc):
+        """Test fetch_standings when API returns no data."""
+        mock_get.return_value = None
+        al, nl, _, _ = fetch_standings()
+        self.assertEqual(al, [])
+        self.assertEqual(nl, [])
+
+    @patch('app.models.data_service.fetch_wild_card')
+    @patch('statsapi.get')
+    def test_fetch_standings_failure(self, mock_get, _mock_wc):
+        """Test fetch_standings handling API failure."""
+        mock_get.side_effect = RuntimeError("API Down")
+        al, nl, _, _ = fetch_standings()
+        self.assertEqual(al, [])
+        self.assertEqual(nl, [])
+
+    @patch('app.models.data_service.fetch_wild_card')
+    @patch('statsapi.get')
+    def test_fetch_standings(self, mock_get, mock_wc):
+        """Test fetch_standings maps division IDs and includes wild card."""
+        mock_get.return_value = {
+            'records': [
+                {
+                    'division': {'id': 201, 'name': 'AL East'},
+                    'teamRecords': [{'team': {'id': 1}, 'wins': 90, 'losses': 72}]
+                },
+                {
+                    'division': {'id': 204, 'name': 'NL East'},
+                    'teamRecords': [{'team': {'id': 2}, 'wins': 85, 'losses': 77}]
+                }
+            ]
+        }
+        mock_wc.side_effect = lambda lid: {'div_name': f"{lid} WC"}
+
+        al, nl, al_wc, nl_wc = fetch_standings()
+
+        # Should find AL East (201) in AL, and NL East (204) in NL
+        # Central and West will be None as they are not in mock_get
+        self.assertEqual(al[0]['div_name'], 'AL East')
+        self.assertIsNone(al[1])
+        self.assertEqual(nl[0]['div_name'], 'NL East')
+        self.assertEqual(al_wc['div_name'], '103 WC')
+        self.assertEqual(nl_wc['div_name'], '104 WC')
+
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()
