@@ -74,7 +74,7 @@ class MLBApp:
     def run(self):
         """Starts the application main loop."""
         with self.manager:
-            self.static_height = min(30, self.manager.terminal.height - 2)
+            self.static_height = min(50, self.manager.terminal.height - 2)
 
             self.main_window = ptg.Window(
                 width=self.static_width,

@@ -10,6 +10,7 @@ from app.models.data_service import (
     fetch_schedule,
     get_yesterday_date,
     get_today_date,
+    fetch_wild_card,
     fetch_standings,
     TEAMS
 )
@@ -83,20 +84,68 @@ class TestDataService(unittest.TestCase):
         mock_datetime.now.return_value = datetime(2024, 1, 2)
         self.assertEqual(get_yesterday_date(), '01/01/2024')
 
+    @patch('statsapi.get')
+    def test_fetch_wild_card_success(self, mock_get):
+        """Test successful wild card fetching."""
+        mock_get.return_value = {
+            'records': [{
+                'teamRecords': [
+                    {
+                        'team': {'id': 1},
+                        'wins': 90,
+                        'losses': 72,
+                        'wildCardGamesBack': '-'
+                    }
+                ]
+            }]
+        }
+        result = fetch_wild_card(103)
+        self.assertEqual(result['div_name'], 'AL Wild Card')
+        self.assertEqual(len(result['teams']), 1)
+        self.assertEqual(result['teams'][0]['w'], 90)
+
+    @patch('statsapi.get')
+    def test_fetch_wild_card_failure(self, mock_get):
+        """Test fetch_wild_card handling API failure."""
+        mock_get.side_effect = RuntimeError("API Down")
+        result = fetch_wild_card(103)
+        self.assertIsNone(result)
+
+    @patch('statsapi.get')
+    def test_fetch_wild_card_truncation(self, mock_get):
+        """Test that wild card teams are truncated to 7."""
+        mock_get.return_value = {
+            'records': [{
+                'teamRecords': [{'team': {'id': i}, 'wins': 0, 'losses': 0} for i in range(10)]
+            }]
+        }
+        result = fetch_wild_card(103)
+        self.assertEqual(len(result['teams']), 7)
+
+    @patch('statsapi.get')
+    def test_fetch_wild_card_no_records(self, mock_get):
+        """Test fetch_wild_card when API returns no records."""
+        mock_get.return_value = {'records': []}
+        result = fetch_wild_card(103)
+        self.assertIsNone(result)
+
+    @patch('app.models.data_service.fetch_wild_card')
     @patch('statsapi.standings_data')
-    def test_fetch_standings(self, mock_standings):
-        """Test fetch_standings maps division IDs correctly."""
+    def test_fetch_standings(self, mock_standings, mock_wc):
+        """Test fetch_standings maps division IDs and includes wild card."""
         mock_data = {
             201: {'div_name': 'ALE'}, 202: {'div_name': 'ALC'}, 200: {'div_name': 'ALW'},
             204: {'div_name': 'NLE'}, 205: {'div_name': 'NLC'}, 203: {'div_name': 'NLW'}
         }
         mock_standings.return_value = mock_data
-        al, nl = fetch_standings()
+        mock_wc.side_effect = lambda lid: {'div_name': f"{lid} WC"}
+
+        al, nl, al_wc, nl_wc = fetch_standings()
 
         self.assertEqual(len(al), 3)
         self.assertEqual(len(nl), 3)
-        self.assertEqual(al[0]['div_name'], 'ALE')
-        self.assertEqual(nl[0]['div_name'], 'NLE')
+        self.assertEqual(al_wc['div_name'], '103 WC')
+        self.assertEqual(nl_wc['div_name'], '104 WC')
 
 if __name__ == '__main__':
     unittest.main()

@@ -45,12 +45,16 @@ class TestMainScreens(unittest.TestCase):
     @patch('app.screens.main_screens.fetch_standings')
     def test_get_standings_widgets(self, mock_fetch):
         """Test standings screen generation."""
-        mock_fetch.return_value = ([], []) # Empty al/nl divs
+        # Mock 3 divisions for AL and NL
+        al_divs = [{'div_name': 'AL E', 'teams': []}, {'div_name': 'AL C', 'teams': []}, {'div_name': 'AL W', 'teams': []}]
+        nl_divs = [{'div_name': 'NL E', 'teams': []}, {'div_name': 'NL C', 'teams': []}, {'div_name': 'NL W', 'teams': []}]
+        mock_fetch.return_value = (al_divs, nl_divs, {}, {})
 
         widgets, title = get_standings_widgets(MagicMock())
 
         self.assertIn("MLB Standings", title)
-        self.assertEqual(len(widgets), 4) # Nav, Label, 2 Tuples (empty)
+        # Nav, Label, 4 Division/WC Splitters
+        self.assertEqual(len(widgets), 6)
         mock_fetch.assert_called_once()
 
 if __name__ == '__main__':
