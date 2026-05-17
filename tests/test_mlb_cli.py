@@ -18,6 +18,8 @@ class TestMLBApp(unittest.TestCase):
              patch('mlb_cli.ptg.WindowManager') as mock_manager:
             self.app = MLBApp()
             self.app.manager = mock_manager.return_value
+            self.app.manager.terminal.width = 100
+            self.app.manager.terminal.height = 40
             self.app.main_window = MagicMock(spec=ptg.Window)
             self.app.main_window.__iter__.return_value = iter([])
 
