@@ -2,20 +2,25 @@
 Main entry point for the MLB CLI application.
 This module initializes the Terminal UI and manages the primary window and global keybindings.
 """
+from datetime import datetime, timedelta
 import pytermgui as ptg
-from app.models.data_service import fetch_teams
-from app.screens.main_screens import (
-    get_yesterday_widgets,
-    get_today_widgets,
-    get_standings_widgets
+from app.models.data_service import (
+    fetch_teams,
+    format_date
 )
-from app.widgets.animations import slide_transition
+from app.screens import (
+    ScheduleScreen,
+    StandingsScreen,
+    CalendarScreen
+)
+from app.widgets import CalendarWidget, slide_transition
 
 
 class MLBApp:
     """
     Main application class that manages the WindowManager and screen transitions.
     """
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self):
         """Initializes the application state and UI components."""
@@ -26,6 +31,21 @@ class MLBApp:
         self.main_window = None
         self.is_initialized = False
         self.active_page = None
+        # Initialize to today (May 15, 2026 per context)
+        self.current_date = datetime.now()
+        # Pages: 0 (Mar, Apr, May), 1 (Jun, Jul, Aug), 2 (Sep, Oct)
+        self.calendar_page = 0
+        self._determine_initial_calendar_page()
+
+    def _determine_initial_calendar_page(self):
+        """Determines the calendar page based on current date."""
+        month = self.current_date.month
+        if month <= 5:
+            self.calendar_page = 0
+        elif month <= 8:
+            self.calendar_page = 1
+        else:
+            self.calendar_page = 2
 
     def set_window_data(self, widgets, title, page_name):
         """Sets content for the main window, using animation if already initialized."""
@@ -46,25 +66,181 @@ class MLBApp:
 
         slide_transition(self.main_window, self.manager, widgets, title)
 
-    def update_to_yesterday(self, *_args, **_kwargs):
-        """Transitions the main window to show yesterday's scores."""
-        widgets, title = get_yesterday_widgets(
-            self.update_to_today, self.update_to_standings)
-        self.set_window_data(widgets, title, "yesterday")
+    def update_to_schedule(self, *_args, **_kwargs):
+        """Transitions the main window to show the schedule for current_date."""
+        date_str = format_date(self.current_date)
+        widgets, title = ScheduleScreen.get_widgets(date_str)
+        self.set_window_data(widgets, title, f"schedule:{date_str}")
         return True
 
-    def update_to_today(self, *_args, **_kwargs):
-        """Transitions the main window to show today's schedule."""
-        widgets, title = get_today_widgets(
-            self.update_to_yesterday, self.update_to_standings)
-        self.set_window_data(widgets, title, "today")
+    def go_to_previous_day(self, *_args, **_kwargs):
+        """Decrements the current date or page."""
+        if self.active_page and self.active_page.startswith("calendar"):
+            return self.go_to_previous_page()
+
+        if self.current_date.year > 2026:
+            self.current_date = datetime(2026, 12, 31)
+
+        if self.current_date > datetime(2026, 1, 1):
+            self.current_date -= timedelta(days=1)
+            return self.update_to_schedule()
         return True
 
-    def update_to_standings(self, *_args, **_kwargs):
-        """Transitions the main window to show current MLB standings."""
-        widgets, title = get_standings_widgets(self.update_to_yesterday)
+    def go_to_next_day(self, *_args, **_kwargs):
+        """Increments the current date or page."""
+        if self.active_page and self.active_page.startswith("calendar"):
+            return self.go_to_next_page()
+
+        if self.current_date.year < 2026:
+
+            self.current_date = datetime(2026, 1, 1)
+
+        if self.current_date < datetime(2026, 12, 31):
+            self.current_date += timedelta(days=1)
+            return self.update_to_schedule()
+        return True
+
+    def toggle_standings(self, *_args, **_kwargs):
+        """Toggles between standings and schedule/calendar."""
+        if self.active_page == "standings":
+            return self.update_to_schedule()
+
+        widgets, title = StandingsScreen.get_widgets()
         self.set_window_data(widgets, title, "standings")
         return True
+
+    def update_to_calendar(self, *_args, **_kwargs):
+        """Transitions to the calendar view."""
+        if self.active_page == "standings":
+            self.current_date = datetime.now()
+
+        # Ensure calendar_page matches current_date
+        self._determine_initial_calendar_page()
+
+        pages = [
+            [3, 4, 5],
+            [6, 7, 8],
+            [9, 10]
+        ]
+        months = pages[self.calendar_page]
+        widgets, title = CalendarScreen.get_widgets(
+            2026,
+            months,
+            self.on_calendar_date_selected,
+            selected_date=self.current_date
+        )
+        self.set_window_data(widgets, title, f"calendar:{self.calendar_page}")
+
+        # Focus current date if it's on this page
+        self._focus_current_date_in_calendar()
+        return True
+
+    def _focus_current_date_in_calendar(self):
+        """Helper to find and focus current_date in the calendar view."""
+        for widget in self.main_window:
+            if not isinstance(widget, ptg.Container):
+                continue
+            for sub in widget:
+                if not (isinstance(sub, CalendarWidget) and
+                        sub.month == self.current_date.month):
+                    continue
+                day = self.current_date.day
+                if day not in sub.day_to_button:
+                    continue
+                btn = sub.day_to_button[day]
+                for i, (selectable, _) in enumerate(self.main_window.selectables):
+                    if selectable is btn:
+                        self.main_window.select(i)
+                        self.manager.focused = btn
+                        return True
+        return False
+
+    def on_calendar_date_selected(self, year, month, day):
+        """Callback for when a date is selected in the calendar."""
+        self.current_date = datetime(year, month, day)
+        return self.update_to_schedule()
+
+    def _navigate_calendar(self, direction):
+        # pylint: disable=too-many-branches
+        """
+        Global WASD navigation for the calendar.
+        Moves focus between buttons based on date logic.
+        """
+        if not (self.active_page and self.active_page.startswith("calendar")):
+            return False
+
+        focused = self.manager.focused
+        if focused is None:
+            return False
+
+        # Find which CalendarWidget the focused button belongs to
+        target_widget = None
+        for widget in self.main_window:
+            if not isinstance(widget, ptg.Container):
+                continue
+            for sub in widget:
+                if isinstance(sub, CalendarWidget) and focused in sub.button_to_day:
+                    target_widget = sub
+                    break
+            if target_widget:
+                break
+
+        if not target_widget:
+            return False
+
+        day = target_widget.button_to_day[focused]
+        current_date = datetime(target_widget.year, target_widget.month, day)
+
+        delta = {
+            "w": timedelta(days=-7),
+            "a": timedelta(days=-1),
+            "s": timedelta(days=7),
+            "d": timedelta(days=1),
+        }.get(direction)
+
+        if not delta:
+            return False
+
+        target_date = current_date + delta
+
+        # Look for the target date in any CalendarWidget in the main window
+        for widget in self.main_window:
+            if not isinstance(widget, ptg.Container):
+                continue
+            for sub in widget:
+                if not (isinstance(sub, CalendarWidget) and
+                        sub.year == target_date.year and
+                        sub.month == target_date.month):
+                    continue
+
+                if target_date.day in sub.day_to_button:
+                    target_btn = sub.day_to_button[target_date.day]
+                    # Find and select the button index in the window
+                    for i, (selectable, _) in enumerate(self.main_window.selectables):
+                        if selectable is target_btn:
+                            self.main_window.select(i)
+                            self.manager.focused = target_btn
+                            return True
+        return False
+
+    def go_to_previous_page(self, *_args, **_kwargs):
+        """Moves calendar view to the previous page."""
+        if self.calendar_page > 0:
+            self.calendar_page -= 1
+            return self.update_to_calendar()
+        return True
+
+    def go_to_next_page(self, *_args, **_kwargs):
+        """Moves calendar view to the next page."""
+        if self.calendar_page < 2:
+            self.calendar_page += 1
+            return self.update_to_calendar()
+        return True
+
+    def go_to_today(self, *_args, **_kwargs):
+        """Resets the current date to today and updates the view."""
+        self.current_date = datetime.now()
+        return self.update_to_schedule()
 
     def exit_app(self, *_args, **_kwargs):
         """Stops the WindowManager and exits the application."""
@@ -83,14 +259,22 @@ class MLBApp:
                 is_noresize=True)
             self.manager.add(self.main_window)
 
-            # Initial content
-            self.update_to_yesterday()
+            # Initial content: Calendar
+            self.update_to_calendar()
 
             # Global bindings
-            self.manager.bind("[", self.update_to_yesterday)
-            self.manager.bind("]", self.update_to_today)
-            self.manager.bind("s", self.update_to_standings)
+            self.manager.bind("[", self.go_to_previous_day)
+            self.manager.bind("]", self.go_to_next_day)
+            self.manager.bind("t", self.go_to_today)
+            self.manager.bind("c", self.update_to_calendar)
+            self.manager.bind("x", self.toggle_standings)
             self.manager.bind(ptg.keys.ESC, self.exit_app)
+
+            # WASD for Calendar Navigation
+            self.manager.bind("w", lambda *_: self._navigate_calendar("w"))
+            self.manager.bind("a", lambda *_: self._navigate_calendar("a"))
+            self.manager.bind("s", lambda *_: self._navigate_calendar("s"))
+            self.manager.bind("d", lambda *_: self._navigate_calendar("d"))
 
             self.manager.run()
 

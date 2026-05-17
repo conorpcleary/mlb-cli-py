@@ -4,17 +4,20 @@ Unit tests for the game_widgets module.
 import unittest
 from unittest.mock import patch, MagicMock
 import pytermgui as ptg
-from app.widgets.game_widgets import (
+from app.widgets import (
     Separator,
     GameWidget,
     StandingWidget,
     NavigationWidget,
+    CalendarButton,
+    CalendarWidget,
     chunk_list,
     create_grid
 )
 
 class TestGameWidgets(unittest.TestCase):
     """Test cases for game_widgets.py classes and functions."""
+    # pylint: disable=protected-access
 
     def test_separator_init(self):
         """Test Separator initialization."""
@@ -38,7 +41,7 @@ class TestGameWidgets(unittest.TestCase):
                 values.extend(self._get_label_values(child))
         return values
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_init(self, mock_abbr):
         """Test GameWidget data mapping with inning data."""
         mock_abbr.side_effect = lambda x: f"T{x}"
@@ -62,7 +65,7 @@ class TestGameWidgets(unittest.TestCase):
         # Check inning label for Final game
         self.assertTrue(any("FINAL" in v for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_in_progress(self, mock_abbr):
         """Test GameWidget with in-progress inning data."""
         mock_abbr.return_value = "TEST"
@@ -86,7 +89,7 @@ class TestGameWidgets(unittest.TestCase):
         values = self._get_label_values(widget)
         self.assertTrue(any("BOT 7" in v for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_scheduled(self, mock_abbr):
         """Test GameWidget with scheduled status shows start time."""
         mock_abbr.return_value = "TEST"
@@ -105,7 +108,7 @@ class TestGameWidgets(unittest.TestCase):
         # Check for time (should contain 'AM' or 'PM' and ':')
         self.assertTrue(any(":" in v and ("AM" in v or "PM" in v) for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_none_scores(self, mock_abbr):
         """Test GameWidget with None scores shows '-'."""
         mock_abbr.return_value = "TEST"
@@ -121,7 +124,7 @@ class TestGameWidgets(unittest.TestCase):
         values = self._get_label_values(widget)
         self.assertTrue(any("-" in v for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_malformed_time(self, mock_abbr):
         """Test GameWidget with malformed game_datetime."""
         mock_abbr.return_value = "TEST"
@@ -137,7 +140,7 @@ class TestGameWidgets(unittest.TestCase):
         # inning_text should be empty string
         self.assertTrue(all(v != "invalid-time" for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_in_progress_no_inning(self, mock_abbr):
         """Test GameWidget in-progress but with no inning data."""
         mock_abbr.return_value = "TEST"
@@ -154,7 +157,7 @@ class TestGameWidgets(unittest.TestCase):
         # Should not crash, and status should be empty
         self.assertTrue(any("TEST" in v for v in values))
 
-    @patch('app.widgets.game_widgets.get_team_abbr')
+    @patch('app.widgets.standing_widget.get_team_abbr')
     def test_standing_widget_init(self, mock_abbr):
         """Test StandingWidget data mapping with pct and l10."""
         mock_abbr.side_effect = lambda x: f"T{x}"
@@ -195,12 +198,54 @@ class TestGameWidgets(unittest.TestCase):
         self.assertIn("No Data", labels[0])
 
     def test_navigation_widget_init(self):
-        """Test NavigationWidget highlighting."""
-        # Test yesterday active
-        widget = NavigationWidget(active_page="yesterday")
-        self.assertIn("[inverse]Yesterday", widget.yest_label.value)
-        self.assertNotIn("[inverse]Today", widget.today_label.value)
-        self.assertNotIn("[inverse]Standings", widget.stand_label.value)
+        """Test NavigationWidget content."""
+        # Test schedule page
+        widget = NavigationWidget(active_page="schedule")
+        self.assertIn("Prev", widget.prev_label.value)
+        self.assertIn("Next", widget.next_label.value)
+        self.assertIn("Today", widget.today_label.value)
+        self.assertIn("Standings", widget.stand_label.value)
+
+        # Test standings page
+        widget = NavigationWidget(active_page="standings")
+        self.assertIn("Schedule", widget.schedule_label.value)
+
+    def test_calendar_button_mouse_handling(self):
+        """Test that CalendarButton ignores mouse events."""
+        btn = CalendarButton("1", lambda _: None)
+        self.assertFalse(btn.handle_mouse(None))
+
+    def test_calendar_widget_init(self):
+        """Test CalendarWidget initialization and callback."""
+        mock_on_selected = MagicMock()
+        # Instead of mocking Button, let's just let it be created but check if they exist
+        widget = CalendarWidget(2026, 5, mock_on_selected)
+
+        # Verify first day (May 1, 2026 is Friday)
+        self.assertEqual(widget.year, 2026)
+        self.assertEqual(widget.month, 5)
+        # Check if we have splitters for weeks
+        splitters = [w for w in widget._widgets if isinstance(w, ptg.Splitter)]
+        # May 2026 has 6 weeks in Sun-Sat layout
+        self.assertEqual(len(splitters), 7) # 1 header + 6 weeks
+
+    def test_calendar_widget_selected_day(self):
+        """Test CalendarWidget with a selected day highlighted."""
+        mock_on_selected = MagicMock()
+        widget = CalendarWidget(2026, 5, mock_on_selected, selected_day=15)
+        # Verify the button for day 15 has 'inverse' style
+        btn = widget.day_to_button[15]
+        self.assertIn("inverse", str(btn.styles.label))
+        # Verify another button has 'white' style
+        other_btn = widget.day_to_button[1]
+        self.assertIn("white", str(other_btn.styles.label))
+
+    def test_navigation_widget_calendar_init(self):
+        """Test NavigationWidget calendar mode."""
+        widget = NavigationWidget(active_page="calendar")
+        self.assertIn("Prev Page", widget.prev_label.value)
+        self.assertIn("Next Page", widget.next_label.value)
+        self.assertIn("Standings", widget.stand_label.value)
 
     def test_chunk_list(self):
         """Test chunk_list utility."""
@@ -208,7 +253,7 @@ class TestGameWidgets(unittest.TestCase):
         chunks = list(chunk_list(lst, 2))
         self.assertEqual(chunks, [[1, 2], [3, 4], [5]])
 
-    @patch('app.widgets.game_widgets.GameWidget')
+    @patch('app.widgets.game_widget.GameWidget')
     def test_create_grid(self, mock_game_widget):
         """Test grid creation logic."""
         mock_game_widget.return_value = MagicMock()

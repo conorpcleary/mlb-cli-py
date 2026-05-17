@@ -65,11 +65,21 @@ def fetch_schedule(date_str):
 
     data = statsapi.schedule(date=date_str)
 
-    # Policy: Today has TTL, Yesterday doesn't
+    # Policy: Today has TTL, other dates don't
     ttl = LIVE_DATA_TTL if date_str == get_today_date() else None
     set_cached_data(cache_key, data, ttl=ttl)
 
     return data
+
+
+def format_date(dt):
+    """Formats a datetime object to MM/DD/YYYY."""
+    return dt.strftime('%m/%d/%Y')
+
+
+def parse_date(date_str):
+    """Parses a MM/DD/YYYY string into a datetime object."""
+    return datetime.strptime(date_str, '%m/%d/%Y')
 
 
 def get_yesterday_date():
