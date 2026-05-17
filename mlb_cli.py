@@ -15,11 +15,18 @@ from app.screens import (
 )
 from app.widgets import CalendarWidget, slide_transition
 
+# TODO: Consider making this dynamic as opposed to a hardcoded value.
+# This value ensures a the initial calendar view is correct, assuming
+# a 3 month view.
+INITIAL_HEIGHT = 36
+
 
 class MLBApp:
     """
     Main application class that manages the WindowManager and screen transitions.
     """
+    # pylint: disable=too-many-instance-attributes
+
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self):
@@ -54,13 +61,19 @@ class MLBApp:
                 on_finish()
             return
 
+        # Calculate required height based on content
+        max_height = self.manager.terminal.height - 2
+        temp_window = ptg.Window(*widgets, width=self.static_width)
+        temp_window.set_title(title)
+        target_height = min(max_height, temp_window.height)
+
         self.active_page = page_name
         if not self.is_initialized:
             self.is_initialized = True
             self.main_window.set_widgets(widgets)
             self.main_window.set_title(title)
             self.main_window.width = self.static_width
-            self.main_window.height = self.static_height
+            self.main_window.height = target_height
             self.main_window.styles.border = "green"
             self.main_window.styles.corner = "green"
             self.main_window.center()
@@ -68,7 +81,14 @@ class MLBApp:
                 on_finish()
             return
 
-        slide_transition(self.main_window, self.manager, widgets, title, on_finish=on_finish)
+        slide_transition(
+            self.main_window,
+            self.manager,
+            widgets,
+            title,
+            on_finish=on_finish,
+            new_height=target_height
+        )
 
     def update_to_schedule(self, *_args, **_kwargs):
         """Transitions the main window to show the schedule for current_date."""
@@ -278,7 +298,7 @@ class MLBApp:
     def run(self):
         """Starts the application main loop."""
         with self.manager:
-            self.static_height = min(50, self.manager.terminal.height - 2)
+            self.static_height = min(INITIAL_HEIGHT, self.manager.terminal.height - 2)
 
             self.main_window = ptg.Window(
                 width=self.static_width,
