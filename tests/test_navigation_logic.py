@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 import pytermgui as ptg
-from mlb_cli import MLBApp
+from app.mlb_cli import MLBApp
 
 
 class TestNavigationLogic(unittest.TestCase):
@@ -14,8 +14,8 @@ class TestNavigationLogic(unittest.TestCase):
 
     def setUp(self):
         """Initialize MLBApp with mocked WindowManager."""
-        with patch('mlb_cli.fetch_teams'), \
-             patch('mlb_cli.ptg.WindowManager') as mock_manager:
+        with patch('app.mlb_cli.fetch_teams'), \
+             patch('app.mlb_cli.ptg.WindowManager') as mock_manager:
             self.app = MLBApp()
             self.app.manager = mock_manager.return_value
             self.app.manager.terminal.width = 100
@@ -92,7 +92,7 @@ class TestNavigationLogic(unittest.TestCase):
         self.assertTrue(self.app.go_to_next_page())
         self.assertEqual(self.app.state.calendar_page, 0)
 
-    @patch('mlb_cli.ScheduleScreen.get_widgets')
+    @patch('app.mlb_cli.ScheduleScreen.get_widgets')
     def test_update_to_schedule(self, mock_get):
         """Test transition to schedule."""
         mock_get.return_value = ([], "Schedule")
@@ -124,7 +124,7 @@ class TestNavigationLogic(unittest.TestCase):
                 datetime.now().strftime('%Y-%m-%d')
             )
 
-    @patch('mlb_cli.StandingsScreen.get_widgets')
+    @patch('app.mlb_cli.StandingsScreen.get_widgets')
     def test_toggle_standings(self, mock_get):
         """Test transition to standings and back."""
         mock_get.return_value = ([], "Standings")

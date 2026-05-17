@@ -4,7 +4,7 @@ Unit tests for the application lifecycle of MLBApp.
 import unittest
 from unittest.mock import patch, MagicMock
 import pytermgui as ptg
-from mlb_cli import MLBApp, main
+from app.mlb_cli import MLBApp, main
 
 
 class TestAppLifecycle(unittest.TestCase):
@@ -13,8 +13,8 @@ class TestAppLifecycle(unittest.TestCase):
 
     def setUp(self):
         """Initialize MLBApp with mocked WindowManager."""
-        with patch('mlb_cli.fetch_teams'), \
-             patch('mlb_cli.ptg.WindowManager') as mock_manager:
+        with patch('app.mlb_cli.fetch_teams'), \
+             patch('app.mlb_cli.ptg.WindowManager') as mock_manager:
             self.app = MLBApp()
             self.app.manager = mock_manager.return_value
             self.app.manager.terminal.width = 100
@@ -52,7 +52,7 @@ class TestAppLifecycle(unittest.TestCase):
         self.app.set_window_data([], "Title", "page1", on_finish=mock_finish)
         mock_finish.assert_called_once()
 
-    @patch('mlb_cli.slide_transition')
+    @patch('app.mlb_cli.slide_transition')
     def test_set_window_data_transition(self, mock_transition):
         """Test set_window_data triggers slide_transition for subsequent calls."""
         self.app.is_initialized = True
@@ -69,7 +69,7 @@ class TestAppLifecycle(unittest.TestCase):
         self.app.exit_app()
         self.app.manager.stop.assert_called_once()
 
-    @patch('mlb_cli.ptg.Window')
+    @patch('app.mlb_cli.ptg.Window')
     def test_run(self, _mock_window):
         """Test main run loop setup."""
         # Mock run to exit immediately
@@ -82,7 +82,7 @@ class TestAppLifecycle(unittest.TestCase):
             mock_update.assert_called_once()
             self.app.manager.run.assert_called_once()
 
-    @patch('mlb_cli.MLBApp')
+    @patch('app.mlb_cli.MLBApp')
     def test_main(self, mock_app_class):
         """Test the main() entry point."""
         mock_app_instance = mock_app_class.return_value
