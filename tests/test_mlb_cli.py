@@ -264,7 +264,7 @@ class TestMLBApp(unittest.TestCase):
     def test_navigate_calendar_success(self):
         """Test successful WASD navigation in calendar."""
         self.app.active_page = "calendar:0"
-        
+
         # Create CalendarWidget with day 1 and day 2
         mock_on_selected = MagicMock()
         cal = CalendarWidget(2026, 5, mock_on_selected)
@@ -276,7 +276,7 @@ class TestMLBApp(unittest.TestCase):
 
         # Real Container with CalendarWidget
         real_container = ptg.Container(cal)
-        
+
         self.app.main_window.__iter__.side_effect = lambda: iter([real_container])
         # selectables: (button, index)
         self.app.main_window.selectables = [(btn1, 0), (btn2, 1)]
@@ -292,7 +292,7 @@ class TestMLBApp(unittest.TestCase):
         cal = CalendarWidget(2026, 5, MagicMock())
         btn1 = cal.day_to_button[1]
         self.app.manager.focused = btn1
-        
+
         real_container = ptg.Container(cal)
         self.app.main_window.__iter__.side_effect = lambda: iter([real_container])
 
@@ -304,7 +304,7 @@ class TestMLBApp(unittest.TestCase):
         cal = CalendarWidget(2026, 5, MagicMock())
         btn31 = cal.day_to_button[31] # Last day of May
         self.app.manager.focused = btn31
-        
+
         real_container = ptg.Container(cal)
         self.app.main_window.__iter__.side_effect = lambda: iter([real_container])
 
@@ -314,11 +314,11 @@ class TestMLBApp(unittest.TestCase):
     def test_navigate_calendar_not_a_container(self):
         """Test _navigate_calendar skips non-container widgets in both loops."""
         self.app.active_page = "calendar:0"
-        
+
         cal = CalendarWidget(2026, 5, MagicMock())
         btn1 = cal.day_to_button[1]
         self.app.manager.focused = btn1
-        
+
         real_container = ptg.Container(cal)
         # Yield a Label THEN a Container to hit first loop's continue
         # Then yield a Label THEN a Container to hit second loop's continue
@@ -326,10 +326,10 @@ class TestMLBApp(unittest.TestCase):
             iter([ptg.Label("test"), real_container]), # First loop
             iter([ptg.Label("test"), real_container])  # Second loop
         ]
-        
+
         btn2 = cal.day_to_button[2]
         self.app.main_window.selectables = [(btn1, 0), (btn2, 1)]
-        
+
         self.assertTrue(self.app._navigate_calendar("d"))
 
     def test_navigate_calendar_focused_not_in_calendar(self):

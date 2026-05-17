@@ -61,7 +61,9 @@ class TestMainScreens(unittest.TestCase):
         """Test calendar screen generation with a selected date highlighted."""
         mock_on_selected = MagicMock()
         selected_date = datetime(2026, 4, 15)
-        widgets, _ = CalendarScreen.get_widgets(2026, [3, 4, 5], mock_on_selected, selected_date=selected_date)
+        widgets, _ = CalendarScreen.get_widgets(
+            2026, [3, 4, 5], mock_on_selected, selected_date=selected_date
+        )
 
         # Check if the correct month container received the selected day
         # widgets[1] is March, widgets[2] is April, widgets[3] is May
