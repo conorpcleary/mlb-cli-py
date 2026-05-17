@@ -44,6 +44,13 @@ class TestMLBApp(unittest.TestCase):
         self.app.set_window_data([], "Title", "page1")
         self.app.main_window.set_widgets.assert_not_called()
 
+    def test_set_window_data_same_page_with_callback(self):
+        """Test set_window_data with the same page name and a callback."""
+        self.app.active_page = "page1"
+        mock_finish = MagicMock()
+        self.app.set_window_data([], "Title", "page1", on_finish=mock_finish)
+        mock_finish.assert_called_once()
+
     def test_go_to_previous_day_limits(self):
         """Test season boundaries for previous day."""
         # Test upper limit (should snap to 2026/12/30)
@@ -210,8 +217,12 @@ class TestMLBApp(unittest.TestCase):
     def test_update_to_calendar(self, mock_get):
         """Test transition to calendar."""
         mock_get.return_value = ([], "Calendar")
-        self.app.update_to_calendar()
-        self.assertEqual(self.app.active_page, f"calendar:{self.app.calendar_page}")
+        with patch.object(self.app, 'set_window_data', wraps=self.app.set_window_data) as mock_set:
+            self.app.update_to_calendar()
+            self.assertEqual(self.app.active_page, f"calendar:{self.app.calendar_page}")
+            mock_set.assert_called_once()
+            _, kwargs = mock_set.call_args
+            self.assertEqual(kwargs['on_finish'], self.app._focus_current_date_in_calendar)
 
     @patch('mlb_cli.CalendarScreen.get_widgets')
     def test_update_to_calendar_from_standings(self, mock_get):

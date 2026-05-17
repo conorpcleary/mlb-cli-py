@@ -11,6 +11,7 @@ class TestAnimations(unittest.TestCase):
 
     @patch('pytermgui.animator.animate_float')
     def test_slide_transition(self, mock_animate):
+        # pylint: disable=too-many-locals
         """Test slide_transition starts the animation and handles callbacks."""
         mock_window = MagicMock(spec=ptg.Window)
         mock_window.width = 80
@@ -59,6 +60,29 @@ class TestAnimations(unittest.TestCase):
         # curr_x = int(10 + (100 - 10) * 0.2) = 10 + 18 = 28
         on_step_in(mock_anim_in)
         self.assertEqual(mock_window.pos, (28, 5))
+
+        # 3. Test on_finish for slide-in
+        mock_finish = MagicMock()
+
+        # We need to re-run slide_transition with on_finish to test it properly
+        mock_animate.reset_mock()
+        slide_transition(mock_window, mock_manager, widgets, title, on_finish=mock_finish)
+
+        # Get the new slide-out finish
+        _, kwargs_out = mock_animate.call_args
+        on_finish_out = kwargs_out['on_finish']
+        mock_animate.reset_mock()
+
+        # Trigger slide-out finish -> starts slide-in
+        on_finish_out(None)
+
+        # Get the new slide-in finish
+        _, kwargs_in_final = mock_animate.call_args
+        on_finish_final = kwargs_in_final['on_finish']
+
+        # Trigger slide-in finish
+        on_finish_final(None)
+        mock_finish.assert_called_once()
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

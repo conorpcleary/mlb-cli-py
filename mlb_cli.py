@@ -47,9 +47,11 @@ class MLBApp:
         else:
             self.calendar_page = 2
 
-    def set_window_data(self, widgets, title, page_name):
+    def set_window_data(self, widgets, title, page_name, on_finish=None):
         """Sets content for the main window, using animation if already initialized."""
         if self.active_page == page_name:
+            if on_finish:
+                on_finish()
             return
 
         self.active_page = page_name
@@ -62,9 +64,11 @@ class MLBApp:
             self.main_window.styles.border = "green"
             self.main_window.styles.corner = "green"
             self.main_window.center()
+            if on_finish:
+                on_finish()
             return
 
-        slide_transition(self.main_window, self.manager, widgets, title)
+        slide_transition(self.main_window, self.manager, widgets, title, on_finish=on_finish)
 
     def update_to_schedule(self, *_args, **_kwargs):
         """Transitions the main window to show the schedule for current_date."""
@@ -130,10 +134,12 @@ class MLBApp:
             self.on_calendar_date_selected,
             selected_date=self.current_date
         )
-        self.set_window_data(widgets, title, f"calendar:{self.calendar_page}")
-
-        # Focus current date if it's on this page
-        self._focus_current_date_in_calendar()
+        self.set_window_data(
+            widgets,
+            title,
+            f"calendar:{self.calendar_page}",
+            on_finish=self._focus_current_date_in_calendar
+        )
         return True
 
     def _focus_current_date_in_calendar(self):
