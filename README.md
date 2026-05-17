@@ -1,6 +1,6 @@
 # MLB Box Score TUI
 
-A high-performance, Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) scores, schedules, and standings. Built with `pytermgui` and the `MLB-StatsAPI`, featuring a modular architecture and 100% test coverage.
+A Python-based Terminal User Interface (TUI) for Major League Baseball (MLB) scores, schedules, and standings. Built with `pytermgui` and the `MLB-StatsAPI`, featuring a modular architecture and 100% test coverage.
 
 ## Features
 
@@ -13,12 +13,15 @@ A high-performance, Python-based Terminal User Interface (TUI) for Major League 
 
 ## Installation
 
-### Prerequisites
+### From PyPI (Recommended)
 
-- Python 3.10+
-- A terminal with support for box-drawing characters and ANSI colors.
+Install the application directly using `pip`:
 
-### Setup
+```bash
+pip install mlb-cli-py
+```
+
+### Local Setup (Development)
 
 1. **Clone the repository:**
    ```bash
@@ -32,17 +35,17 @@ A high-performance, Python-based Terminal User Interface (TUI) for Major League 
    source venv/bin/activate
    ```
 
-3. **Install dependencies:**
+3. **Install in editable mode:**
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[dev]"
    ```
 
 ## Usage
 
-Run the application using the main entry point:
+After installation, run the application from anywhere in your terminal:
 
 ```bash
-python3 mlb_cli.py
+mlb-cli
 ```
 
 ## Controls
@@ -75,17 +78,17 @@ When in the Calendar view, you can use specialized keys for precise date selecti
 
 ## Project Structure
 
-The project follows a strict modular design:
+The project follows a strict modular design optimized for distribution:
 
 ```text
 mlb-cli-py/
-├── mlb_cli.py           # Main application controller and state management
+├── pyproject.toml       # Modern build system configuration and metadata
 ├── app/
+│   ├── mlb_cli.py       # Main application controller and TUI entry point
 │   ├── models/          # Data services (API fetching, caching, date utilities)
 │   ├── widgets/         # Modular TUI components (Game, Standing, Calendar widgets)
 │   └── screens/         # Class-based screen definitions (Schedule, Standings, Calendar)
 ├── tests/               # 100% covered test suite (Unit and integration tests)
-├── requirements.txt     # Project dependencies
 └── README.md            # You are here!
 ```
 
@@ -98,13 +101,7 @@ The project maintains a perfect **10.00/10 Pylint score** and **100% test covera
 To run the full test suite using `pytest`:
 
 ```bash
-pytest
-```
-
-To run tests with coverage reporting:
-
-```bash
-pytest --cov=app --cov=mlb_cli tests/
+PYTHONPATH=. pytest
 ```
 
 ### Linting
@@ -112,8 +109,18 @@ pytest --cov=app --cov=mlb_cli tests/
 To verify code quality:
 
 ```bash
-pylint mlb_cli.py app tests
+pylint app tests
 ```
+
+## Release Workflow
+
+This project uses an automated release pipeline to publish updates to PyPI:
+
+1. **Version Bump:** Update the version in `pyproject.toml`.
+2. **GitHub Release:** Create and publish a new Release on GitHub with a version tag (e.g., `v0.1.0`).
+3. **Automated Publish:** A GitHub Action is triggered by the release, which:
+   - Builds the source distribution and wheel.
+   - Publishes the package to PyPI using **Trusted Publishing (OIDC)**.
 
 ## Acknowledgements
 

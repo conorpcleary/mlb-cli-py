@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 import pytermgui as ptg
-from mlb_cli import MLBApp
+from app.mlb_cli import MLBApp
 from app.widgets import CalendarWidget
 
 
@@ -15,8 +15,8 @@ class TestCalendarInteraction(unittest.TestCase):
 
     def setUp(self):
         """Initialize MLBApp with mocked WindowManager."""
-        with patch('mlb_cli.fetch_teams'), \
-             patch('mlb_cli.ptg.WindowManager') as mock_manager:
+        with patch('app.mlb_cli.fetch_teams'), \
+             patch('app.mlb_cli.ptg.WindowManager') as mock_manager:
             self.app = MLBApp()
             self.app.manager = mock_manager.return_value
             self.app.manager.terminal.width = 100
@@ -92,7 +92,7 @@ class TestCalendarInteraction(unittest.TestCase):
         self.assertTrue(self.app._focus_current_date_in_calendar(target="last"))
         self.assertEqual(self.app.manager.focused, btn_june30)
 
-    @patch('mlb_cli.CalendarScreen.get_widgets')
+    @patch('app.mlb_cli.CalendarScreen.get_widgets')
     def test_update_to_calendar(self, mock_get):
         """Test transition to calendar."""
         mock_get.return_value = ([], "Calendar")
@@ -103,7 +103,7 @@ class TestCalendarInteraction(unittest.TestCase):
             _, kwargs = mock_set.call_args
             self.assertTrue(callable(kwargs['on_finish']))
 
-    @patch('mlb_cli.CalendarScreen.get_widgets')
+    @patch('app.mlb_cli.CalendarScreen.get_widgets')
     def test_update_to_calendar_from_standings(self, mock_get):
         """Test that date is reset when returning from standings."""
         mock_get.return_value = ([], "Calendar")

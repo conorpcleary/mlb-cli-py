@@ -4,7 +4,7 @@ Unit tests for the error handling logic in MLBApp.
 import unittest
 from unittest.mock import patch, MagicMock
 import pytermgui as ptg
-from mlb_cli import MLBApp
+from app.mlb_cli import MLBApp
 from app.exceptions import APIError
 from app.screens import ErrorScreen
 
@@ -14,8 +14,8 @@ class TestErrorHandling(unittest.TestCase):
 
     def setUp(self):
         """Initialize MLBApp with mocked WindowManager."""
-        with patch('mlb_cli.fetch_teams'), \
-             patch('mlb_cli.ptg.WindowManager') as mock_manager:
+        with patch('app.mlb_cli.fetch_teams'), \
+             patch('app.mlb_cli.ptg.WindowManager') as mock_manager:
             self.app = MLBApp()
             self.app.manager = mock_manager.return_value
             self.app.manager.terminal.width = 100

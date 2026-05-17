@@ -4,21 +4,21 @@ This module initializes the Terminal UI and manages the primary window and globa
 """
 from datetime import datetime, timedelta
 import pytermgui as ptg
-from app.models.data_service import (
+from .models.data_service import (
     fetch_teams,
     format_date
 )
-from app.screens import (
+from .screens import (
     ScheduleScreen,
     StandingsScreen,
     CalendarScreen,
     ErrorScreen
 )
-from app.widgets import CalendarWidget, slide_transition
-from app.config import STATIC_WIDTH, INITIAL_HEIGHT
-from app.state import ApplicationState
-from app.exceptions import APIError
-from app.logger import get_logger
+from .widgets import CalendarWidget, slide_transition
+from .config import STATIC_WIDTH, INITIAL_HEIGHT
+from .state import ApplicationState
+from .exceptions import APIError
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
