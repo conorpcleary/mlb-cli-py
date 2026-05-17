@@ -5,10 +5,7 @@ Uses Redis to store API responses with specific TTL policies.
 import json
 import redis
 
-# Default Redis configuration
-REDIS_HOST = 'localhost'
-REDIS_PORT = 6379
-REDIS_DB = 0
+from app.config import REDIS_HOST, REDIS_PORT, REDIS_DB
 
 try:
     # pylint: disable=invalid-name
