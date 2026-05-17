@@ -1,41 +1,25 @@
 """
-Data service module for fetching MLB data via the statsapi library.
-Provides functions for team abbreviations, schedules, and standings.
+Data service module for fetching MLB data.
+Delegates to a BaseDataSource implementation (defaulting to StatsApiDataSource).
 """
 from datetime import datetime, timedelta
-import statsapi
+from app.config import LIVE_DATA_TTL
 from app.models.cache_service import get_cached_data, set_cached_data
+from .statsapi_source import StatsApiDataSource
 
 # Global cache for team abbreviations
 TEAMS = {}
 
-# TTL Policies (in seconds)
-LIVE_DATA_TTL = 300  # 5 minutes
-
-
-# Division name mapping
-DIVISION_NAMES = {
-    200: "AL West",
-    201: "AL East",
-    202: "AL Central",
-    203: "NL West",
-    204: "NL East",
-    205: "NL Central"
-}
+# Default data source
+_data_source = StatsApiDataSource()
 
 
 def fetch_teams():
     """
     Fetches all MLB teams and populates the global TEAMS cache with abbreviations.
-    Defaults to specific common teams if the API request fails.
     """
-    try:
-        teams_data = statsapi.get('teams', {'sportId': 1})['teams']
-        for t in teams_data:
-            TEAMS[t['id']] = t.get('abbreviation', t['name'][:3].upper())
-    except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
-        # Fallback to some common ones if API fails
-        TEAMS.update({147: 'NYY', 110: 'BAL', 119: 'LAD'})
+    TEAMS.clear()
+    TEAMS.update(_data_source.fetch_teams())
 
 
 def get_team_abbr(team_id):
@@ -63,13 +47,23 @@ def fetch_schedule(date_str):
     if cached is not None:
         return cached
 
-    data = statsapi.schedule(date=date_str)
+    data = _data_source.fetch_schedule(date_str)
 
-    # Policy: Today has TTL, Yesterday doesn't
+    # Policy: Today has TTL, other dates don't
     ttl = LIVE_DATA_TTL if date_str == get_today_date() else None
     set_cached_data(cache_key, data, ttl=ttl)
 
     return data
+
+
+def format_date(dt):
+    """Formats a datetime object to MM/DD/YYYY."""
+    return dt.strftime('%m/%d/%Y')
+
+
+def parse_date(date_str):
+    """Parses a MM/DD/YYYY string into a datetime object."""
+    return datetime.strptime(date_str, '%m/%d/%Y')
 
 
 def get_yesterday_date():
@@ -141,26 +135,19 @@ def fetch_wild_card(league_id):
     if cached is not None:
         return cached
 
-    try:
-        data = statsapi.get('standings', {
-            'leagueId': league_id,
-            'standingsTypes': 'wildCard'
-        })
-        if not data or not data.get('records'):
-            return None
-
-        record = data['records'][0]
-        teams = [_parse_team_record(tr, is_wild_card=True) for tr in record.get('teamRecords', [])]
-
-        league_name = "AL" if league_id == 103 else "NL"
-        result = {
-            'div_name': f"{league_name} Wild Card",
-            'teams': teams[:7]
-        }
-        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
-        return result
-    except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
+    record = _data_source.fetch_wild_card(league_id)
+    if not record:
         return None
+
+    teams = [_parse_team_record(tr, is_wild_card=True) for tr in record.get('teamRecords', [])]
+
+    league_name = "AL" if league_id == 103 else "NL"
+    result = {
+        'div_name': f"{league_name} Wild Card",
+        'teams': teams[:7]
+    }
+    set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+    return result
 
 
 def fetch_standings():
@@ -176,35 +163,28 @@ def fetch_standings():
     if cached is not None:
         return tuple(cached)
 
-    try:
-        data = statsapi.get('standings', {'leagueId': '103,104'})
-        if not data or not data.get('records'):
-            return [], [], None, None
-
-        div_map = {}
-        for record in data['records']:
-            div_id = record.get('division', {}).get('id')
-            if div_id:
-                div_map[div_id] = {
-                    'div_name': DIVISION_NAMES.get(
-                        div_id, record.get('division', {}).get('name', 'Unknown')
-                    ),
-                    'teams': [
-                        _parse_team_record(tr, is_wild_card=False)
-                        for tr in record.get('teamRecords', [])
-                    ]
-                }
-
-        # AL IDs: East(201), Central(202), West(200)
-        # NL IDs: East(204), Central(205), West(203)
-        al_divs = [div_map.get(201), div_map.get(202), div_map.get(200)]
-        nl_divs = [div_map.get(204), div_map.get(205), div_map.get(203)]
-
-        al_wc = fetch_wild_card(103)
-        nl_wc = fetch_wild_card(104)
-
-        result = (al_divs, nl_divs, al_wc, nl_wc)
-        set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
-        return result
-    except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError):
+    div_results = _data_source.fetch_standings()
+    if not div_results:
         return [], [], None, None
+
+    div_map = {}
+    for div in div_results:
+        div_map[div['id']] = {
+            'div_name': div['name'],
+            'teams': [
+                _parse_team_record(tr, is_wild_card=False)
+                for tr in div['teams']
+            ]
+        }
+
+    # AL IDs: East(201), Central(202), West(200)
+    # NL IDs: East(204), Central(205), West(203)
+    al_divs = [div_map.get(201), div_map.get(202), div_map.get(200)]
+    nl_divs = [div_map.get(204), div_map.get(205), div_map.get(203)]
+
+    al_wc = fetch_wild_card(103)
+    nl_wc = fetch_wild_card(104)
+
+    result = (al_divs, nl_divs, al_wc, nl_wc)
+    set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
+    return result

@@ -1,4 +1,10 @@
+**.log
 .coverage
 **/__pycache__
 htmlcov/
 .pytest_cache/
+*.egg-info/
+.eggs/
+*.egg
+build/
+dist/

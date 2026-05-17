@@ -1,6 +1,0 @@
-pytermgui==7.7.4
-MLB-StatsAPI==1.9.0
-pytest==8.2.0
-pytest-cov==5.0.0
-redis==5.0.4
-fakeredis==2.23.2

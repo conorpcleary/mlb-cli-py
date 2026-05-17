@@ -4,6 +4,7 @@ Unit tests for the data_service module.
 import unittest
 from unittest.mock import patch
 from datetime import datetime
+from app.exceptions import APIError
 from app.models.data_service import (
     fetch_teams,
     get_team_abbr,
@@ -12,6 +13,7 @@ from app.models.data_service import (
     get_today_date,
     fetch_wild_card,
     fetch_standings,
+    parse_date,
     TEAMS
 )
 
@@ -76,6 +78,14 @@ class TestDataService(unittest.TestCase):
             mock_schedule.assert_called_with(date='01/01/2024')
             self.assertEqual(result, [{'game_id': 123}])
 
+    @patch('statsapi.schedule')
+    def test_fetch_schedule_failure(self, mock_schedule):
+        """Test fetch_schedule handling API failure."""
+        mock_schedule.side_effect = RuntimeError("API Down")
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            with self.assertRaises(APIError):
+                fetch_schedule('01/01/2024')
+
     @patch('app.models.data_service.get_cached_data')
     def test_fetch_schedule_cache_hit(self, mock_cache):
         """Test fetch_schedule returns cached data."""
@@ -86,28 +96,32 @@ class TestDataService(unittest.TestCase):
     @patch('app.models.data_service.set_cached_data')
     @patch('app.models.data_service.get_cached_data')
     @patch('statsapi.schedule')
-    def test_fetch_schedule_cache_miss_today(self, mock_schedule, mock_get_cache, mock_set_cache):
+    @patch('app.models.data_service.datetime')
+    def test_fetch_schedule_cache_miss_today(self, mock_datetime, mock_schedule,
+                                             mock_get_cache, mock_set_cache):
         """Test fetch_schedule sets TTL for today's schedule."""
         mock_get_cache.return_value = None
         mock_schedule.return_value = [{'id': 1}]
+        mock_datetime.now.return_value = datetime(2024, 1, 1)
 
-        with patch('app.models.data_service.get_today_date', return_value='01/01/2024'):
-            fetch_schedule('01/01/2024')
-            mock_set_cache.assert_called_with(
-                'schedule:01/01/2024', [{'id': 1}], ttl=300
-            )
+        fetch_schedule('01/01/2024')
+        mock_set_cache.assert_called_with(
+            'schedule:01/01/2024', [{'id': 1}], ttl=300
+        )
 
     @patch('app.models.data_service.set_cached_data')
     @patch('app.models.data_service.get_cached_data')
     @patch('statsapi.schedule')
-    def test_fetch_schedule_cache_miss_yesterday(self, mock_sched, mock_get_c, mock_set_c):
+    @patch('app.models.data_service.datetime')
+    def test_fetch_schedule_cache_miss_yesterday(self, mock_datetime, mock_sched,
+                                                 mock_get_c, mock_set_c):
         """Test fetch_schedule uses no TTL for other dates (yesterday)."""
         mock_get_c.return_value = None
         mock_sched.return_value = [{'id': 1}]
+        mock_datetime.now.return_value = datetime(2024, 1, 2)
 
-        with patch('app.models.data_service.get_today_date', return_value='01/02/2024'):
-            fetch_schedule('01/01/2024')
-            mock_set_c.assert_called_with('schedule:01/01/2024', [{'id': 1}], ttl=None)
+        fetch_schedule('01/01/2024')
+        mock_set_c.assert_called_with('schedule:01/01/2024', [{'id': 1}], ttl=None)
 
     @patch('app.models.data_service.datetime')
     def test_get_today_date(self, mock_datetime):
@@ -120,6 +134,13 @@ class TestDataService(unittest.TestCase):
         """Test yesterday's date formatting."""
         mock_datetime.now.return_value = datetime(2024, 1, 2)
         self.assertEqual(get_yesterday_date(), '01/01/2024')
+
+    def test_parse_date(self):
+        """Test parse_date utility."""
+        dt = parse_date('05/15/2026')
+        self.assertEqual(dt.year, 2026)
+        self.assertEqual(dt.month, 5)
+        self.assertEqual(dt.day, 15)
 
     @patch('app.models.data_service.get_cached_data')
     @patch('statsapi.get')
@@ -176,8 +197,8 @@ class TestDataService(unittest.TestCase):
         mock_get.side_effect = RuntimeError("API Down")
         # Mock cache miss
         with patch('app.models.data_service.get_cached_data', return_value=None):
-            result = fetch_wild_card(103)
-            self.assertIsNone(result)
+            with self.assertRaises(APIError):
+                fetch_wild_card(103)
 
     @patch('statsapi.get')
     def test_fetch_wild_card_truncation(self, mock_get):
@@ -234,9 +255,8 @@ class TestDataService(unittest.TestCase):
         """Test fetch_standings handling API failure."""
         mock_get.side_effect = RuntimeError("API Down")
         with patch('app.models.data_service.get_cached_data', return_value=None):
-            al, nl, _, _ = fetch_standings()
-            self.assertEqual(al, [])
-            self.assertEqual(nl, [])
+            with self.assertRaises(APIError):
+                fetch_standings()
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('app.models.data_service.get_cached_data', return_value=None)
