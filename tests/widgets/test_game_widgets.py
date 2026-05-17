@@ -141,6 +141,29 @@ class TestGameWidgets(unittest.TestCase):
         self.assertTrue(all(v != "invalid-time" for v in values))
 
     @patch('app.widgets.game_widget.get_team_abbr')
+    def test_game_widget_inning_states(self, mock_abbr):
+        """Test GameWidget with MID and END inning states."""
+        mock_abbr.return_value = "TEST"
+        # Middle of 5th
+        game = {
+            'game_id': 123,
+            'away_id': 1,
+            'home_id': 2,
+            'status': 'Live',
+            'current_inning': 5,
+            'inning_state': 'Middle'
+        }
+        widget = GameWidget(game)
+        values = self._get_label_values(widget)
+        self.assertTrue(any("MID 5" in v for v in values))
+
+        # End of 5th
+        game['inning_state'] = 'End'
+        widget = GameWidget(game)
+        values = self._get_label_values(widget)
+        self.assertTrue(any("END 5" in v for v in values))
+
+    @patch('app.widgets.game_widget.get_team_abbr')
     def test_game_widget_in_progress_no_inning(self, mock_abbr):
         """Test GameWidget in-progress but with no inning data."""
         mock_abbr.return_value = "TEST"

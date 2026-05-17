@@ -70,6 +70,10 @@ class GameWidget(ptg.Container):
                 prefix = "TOP"
             elif inning_state.lower().startswith('bottom'):
                 prefix = "BOT"
+            elif inning_state.lower().startswith('middle'):
+                prefix = "MID"
+            elif inning_state.lower().startswith('end'):
+                prefix = "END"
             return f"{prefix} {inning_val}"
 
         return ""
