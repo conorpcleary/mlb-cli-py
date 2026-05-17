@@ -11,52 +11,38 @@ from app.models.data_service import (
 from app.screens import (
     ScheduleScreen,
     StandingsScreen,
-    CalendarScreen
+    CalendarScreen,
+    ErrorScreen
 )
 from app.widgets import CalendarWidget, slide_transition
+from app.config import STATIC_WIDTH, INITIAL_HEIGHT
+from app.state import ApplicationState
+from app.exceptions import APIError
+from app.logger import get_logger
 
-# TODO: Consider making this dynamic as opposed to a hardcoded value.
-# This value ensures a the initial calendar view is correct, assuming
-# a 3 month view.
-INITIAL_HEIGHT = 36
+logger = get_logger(__name__)
 
 
 class MLBApp:
     """
-    Main application class that manages the WindowManager and screen transitions.
+    TUI Manager class for the MLB CLI application.
+    Handles window management, screen transitions, and global keybindings.
     """
     # pylint: disable=too-many-instance-attributes
 
-    # pylint: disable=too-many-instance-attributes
-
     def __init__(self):
-        """Initializes the application state and UI components."""
+        """Initializes the application UI and logic state."""
         fetch_teams()
         self.manager = ptg.WindowManager()
-        self.static_width = 80
+        self.state = ApplicationState()
+        self.static_width = STATIC_WIDTH
         self.static_height = 0  # Will be set in run()
         self.main_window = None
         self.is_initialized = False
-        self.active_page = None
-        # Initialize to today (May 15, 2026 per context)
-        self.current_date = datetime.now()
-        # Pages: 0 (Mar, Apr, May), 1 (Jun, Jul, Aug), 2 (Sep, Oct)
-        self.calendar_page = 0
-        self._determine_initial_calendar_page()
-
-    def _determine_initial_calendar_page(self):
-        """Determines the calendar page based on current date."""
-        month = self.current_date.month
-        if month <= 5:
-            self.calendar_page = 0
-        elif month <= 8:
-            self.calendar_page = 1
-        else:
-            self.calendar_page = 2
 
     def set_window_data(self, widgets, title, page_name, on_finish=None):
         """Sets content for the main window, using animation if already initialized."""
-        if self.active_page == page_name:
+        if self.state.active_page == page_name:
             if on_finish:
                 on_finish()
             return
@@ -67,7 +53,7 @@ class MLBApp:
         temp_window.set_title(title)
         target_height = min(max_height, temp_window.height)
 
-        self.active_page = page_name
+        self.state.set_active_page(page_name)
         if not self.is_initialized:
             self.is_initialized = True
             self.main_window.set_widgets(widgets)
@@ -90,74 +76,83 @@ class MLBApp:
             new_height=target_height
         )
 
+    @staticmethod
+    def handle_errors(func):
+        """Decorator to handle errors during screen transitions."""
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except (APIError, Exception) as e:  # pylint: disable=broad-exception-caught
+                logger.error("Error in %s: %s", func.__name__, e, exc_info=True)
+                # Provide a user-friendly message for generic exceptions
+                msg = str(e) if isinstance(e, APIError) else "An unexpected error occurred"
+                widgets, title = ErrorScreen.get_widgets(msg)
+                self.set_window_data(widgets, title, "error")
+                return False
+        return wrapper
+
+    @handle_errors
     def update_to_schedule(self, *_args, **_kwargs):
         """Transitions the main window to show the schedule for current_date."""
-        date_str = format_date(self.current_date)
+        date_str = format_date(self.state.current_date)
         widgets, title = ScheduleScreen.get_widgets(date_str)
         self.set_window_data(widgets, title, f"schedule:{date_str}")
         return True
 
     def go_to_previous_day(self, *_args, **_kwargs):
         """Decrements the current date or page."""
-        if self.active_page and self.active_page.startswith("calendar"):
+        if self.state.on_calendar_screen:
             return self.go_to_previous_page()
 
-        if self.current_date.year > 2026:
-            self.current_date = datetime(2026, 12, 31)
-
-        if self.current_date > datetime(2026, 1, 1):
-            self.current_date -= timedelta(days=1)
+        if self.state.decrement_date():
             return self.update_to_schedule()
         return True
 
     def go_to_next_day(self, *_args, **_kwargs):
         """Increments the current date or page."""
-        if self.active_page and self.active_page.startswith("calendar"):
+        if self.state.on_calendar_screen:
             return self.go_to_next_page()
 
-        if self.current_date.year < 2026:
-
-            self.current_date = datetime(2026, 1, 1)
-
-        if self.current_date < datetime(2026, 12, 31):
-            self.current_date += timedelta(days=1)
+        if self.state.increment_date():
             return self.update_to_schedule()
         return True
 
+    @handle_errors
     def toggle_standings(self, *_args, **_kwargs):
         """Toggles between standings and schedule/calendar."""
-        if self.active_page == "standings":
+        if self.state.on_standings_screen:
             return self.update_to_schedule()
 
         widgets, title = StandingsScreen.get_widgets()
         self.set_window_data(widgets, title, "standings")
         return True
 
+    @handle_errors
     def update_to_calendar(self, *_args, sync_page=True, focus_target=None, **_kwargs):
         """Transitions to the calendar view."""
-        if self.active_page == "standings":
-            self.current_date = datetime.now()
+        if self.state.on_standings_screen:
+            self.state.reset_to_today()
 
         if sync_page:
             # Ensure calendar_page matches current_date
-            self._determine_initial_calendar_page()
+            self.state.determine_initial_calendar_page()
 
         pages = [
             [3, 4, 5],
             [6, 7, 8],
             [9, 10]
         ]
-        months = pages[self.calendar_page]
+        months = pages[self.state.calendar_page]
         widgets, title = CalendarScreen.get_widgets(
             2026,
             months,
             self.on_calendar_date_selected,
-            selected_date=self.current_date
+            selected_date=self.state.current_date
         )
         self.set_window_data(
             widgets,
             title,
-            f"calendar:{self.calendar_page}",
+            f"calendar:{self.state.calendar_page}",
             on_finish=lambda: self._focus_current_date_in_calendar(target=focus_target)
         )
         return True
@@ -193,8 +188,8 @@ class MLBApp:
         else:
             # Default: focus current_date
             for sub in calendar_widgets:
-                if sub.month == self.current_date.month:
-                    day = self.current_date.day
+                if sub.month == self.state.current_date.month:
+                    day = self.state.current_date.day
                     if day in sub.day_to_button:
                         target_btn = sub.day_to_button[day]
                         break
@@ -209,7 +204,7 @@ class MLBApp:
 
     def on_calendar_date_selected(self, year, month, day):
         """Callback for when a date is selected in the calendar."""
-        self.current_date = datetime(year, month, day)
+        self.state.current_date = datetime(year, month, day)
         return self.update_to_schedule()
 
     def _navigate_calendar(self, direction):
@@ -218,7 +213,7 @@ class MLBApp:
         Global WASD navigation for the calendar.
         Moves focus between buttons based on date logic.
         """
-        if not (self.active_page and self.active_page.startswith("calendar")):
+        if not self.state.on_calendar_screen:
             return False
 
         focused = self.manager.focused
@@ -277,17 +272,17 @@ class MLBApp:
 
     def go_to_previous_page(self, *_args, **_kwargs):
         """Moves calendar view to the previous page with wrapping."""
-        self.calendar_page = (self.calendar_page - 1) % 3
+        self.state.prev_calendar_page()
         return self.update_to_calendar(sync_page=False, focus_target="last")
 
     def go_to_next_page(self, *_args, **_kwargs):
         """Moves calendar view to the next page with wrapping."""
-        self.calendar_page = (self.calendar_page + 1) % 3
+        self.state.next_calendar_page()
         return self.update_to_calendar(sync_page=False, focus_target="first")
 
     def go_to_today(self, *_args, **_kwargs):
         """Resets the current date to today and updates the view."""
-        self.current_date = datetime.now()
+        self.state.reset_to_today()
         return self.update_to_schedule()
 
     def exit_app(self, *_args, **_kwargs):

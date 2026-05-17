@@ -1,3 +1,4 @@
+**.log
 .coverage
 **/__pycache__
 htmlcov/

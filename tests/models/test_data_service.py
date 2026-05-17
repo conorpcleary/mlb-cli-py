@@ -4,6 +4,7 @@ Unit tests for the data_service module.
 import unittest
 from unittest.mock import patch
 from datetime import datetime
+from app.exceptions import APIError
 from app.models.data_service import (
     fetch_teams,
     get_team_abbr,
@@ -76,6 +77,14 @@ class TestDataService(unittest.TestCase):
             result = fetch_schedule('01/01/2024')
             mock_schedule.assert_called_with(date='01/01/2024')
             self.assertEqual(result, [{'game_id': 123}])
+
+    @patch('statsapi.schedule')
+    def test_fetch_schedule_failure(self, mock_schedule):
+        """Test fetch_schedule handling API failure."""
+        mock_schedule.side_effect = RuntimeError("API Down")
+        with patch('app.models.data_service.get_cached_data', return_value=None):
+            with self.assertRaises(APIError):
+                fetch_schedule('01/01/2024')
 
     @patch('app.models.data_service.get_cached_data')
     def test_fetch_schedule_cache_hit(self, mock_cache):
@@ -188,8 +197,8 @@ class TestDataService(unittest.TestCase):
         mock_get.side_effect = RuntimeError("API Down")
         # Mock cache miss
         with patch('app.models.data_service.get_cached_data', return_value=None):
-            result = fetch_wild_card(103)
-            self.assertIsNone(result)
+            with self.assertRaises(APIError):
+                fetch_wild_card(103)
 
     @patch('statsapi.get')
     def test_fetch_wild_card_truncation(self, mock_get):
@@ -246,9 +255,8 @@ class TestDataService(unittest.TestCase):
         """Test fetch_standings handling API failure."""
         mock_get.side_effect = RuntimeError("API Down")
         with patch('app.models.data_service.get_cached_data', return_value=None):
-            al, nl, _, _ = fetch_standings()
-            self.assertEqual(al, [])
-            self.assertEqual(nl, [])
+            with self.assertRaises(APIError):
+                fetch_standings()
 
     @patch('app.models.data_service.fetch_wild_card')
     @patch('app.models.data_service.get_cached_data', return_value=None)
