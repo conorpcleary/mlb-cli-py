@@ -109,13 +109,14 @@ class MLBApp:
         self.set_window_data(widgets, title, "standings")
         return True
 
-    def update_to_calendar(self, *_args, **_kwargs):
+    def update_to_calendar(self, *_args, sync_page=True, **_kwargs):
         """Transitions to the calendar view."""
         if self.active_page == "standings":
             self.current_date = datetime.now()
 
-        # Ensure calendar_page matches current_date
-        self._determine_initial_calendar_page()
+        if sync_page:
+            # Ensure calendar_page matches current_date
+            self._determine_initial_calendar_page()
 
         pages = [
             [3, 4, 5],
@@ -224,18 +225,14 @@ class MLBApp:
         return False
 
     def go_to_previous_page(self, *_args, **_kwargs):
-        """Moves calendar view to the previous page."""
-        if self.calendar_page > 0:
-            self.calendar_page -= 1
-            return self.update_to_calendar()
-        return True
+        """Moves calendar view to the previous page with wrapping."""
+        self.calendar_page = (self.calendar_page - 1) % 3
+        return self.update_to_calendar(sync_page=False)
 
     def go_to_next_page(self, *_args, **_kwargs):
-        """Moves calendar view to the next page."""
-        if self.calendar_page < 2:
-            self.calendar_page += 1
-            return self.update_to_calendar()
-        return True
+        """Moves calendar view to the next page with wrapping."""
+        self.calendar_page = (self.calendar_page + 1) % 3
+        return self.update_to_calendar(sync_page=False)
 
     def go_to_today(self, *_args, **_kwargs):
         """Resets the current date to today and updates the view."""

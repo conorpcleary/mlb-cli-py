@@ -140,16 +140,16 @@ class TestMLBApp(unittest.TestCase):
             mock_go.assert_called_once()
 
     def test_go_to_previous_page_boundary(self):
-        """Test boundary for go_to_previous_page."""
+        """Test boundary for go_to_previous_page (wraps)."""
         self.app.calendar_page = 0
         self.assertTrue(self.app.go_to_previous_page())
-        self.assertEqual(self.app.calendar_page, 0)
+        self.assertEqual(self.app.calendar_page, 2)
 
     def test_go_to_next_page_boundary(self):
-        """Test boundary for go_to_next_page."""
+        """Test boundary for go_to_next_page (wraps)."""
         self.app.calendar_page = 2
         self.assertTrue(self.app.go_to_next_page())
-        self.assertEqual(self.app.calendar_page, 2)
+        self.assertEqual(self.app.calendar_page, 0)
 
     def test_focus_current_date_in_calendar_day_missing(self):
         """Test _focus_current_date_in_calendar when day is missing from button map."""
@@ -229,18 +229,33 @@ class TestMLBApp(unittest.TestCase):
         )
 
     def test_go_to_previous_page(self):
-        """Test decrementing calendar page."""
-        self.app.calendar_page = 1
+        """Test decrementing calendar page with wrapping."""
+        self.app.calendar_page = 0
         with patch.object(self.app, 'update_to_calendar'):
             self.app.go_to_previous_page()
-            self.assertEqual(self.app.calendar_page, 0)
+            self.assertEqual(self.app.calendar_page, 2)
 
     def test_go_to_next_page(self):
-        """Test incrementing calendar page."""
-        self.app.calendar_page = 1
+        """Test incrementing calendar page with wrapping."""
+        self.app.calendar_page = 2
         with patch.object(self.app, 'update_to_calendar'):
             self.app.go_to_next_page()
-            self.assertEqual(self.app.calendar_page, 2)
+            self.assertEqual(self.app.calendar_page, 0)
+
+    def test_pagination_no_mock(self):
+        """Test that pagination actually works without mocking update_to_calendar."""
+        # Set date to May (should be page 0)
+        self.app.current_date = datetime(2026, 5, 15)
+        self.app.calendar_page = 0
+
+        # We need to mock CalendarScreen.get_widgets to avoid real UI creation issues in test
+        with patch('app.screens.CalendarScreen.get_widgets') as mock_get:
+            mock_get.return_value = ([], "Title")
+
+            # Go to next page
+            self.app.go_to_next_page()
+
+            self.assertEqual(self.app.calendar_page, 1)
 
     def test_on_calendar_date_selected(self):
         """Test selecting a date from calendar."""
