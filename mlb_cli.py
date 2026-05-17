@@ -11,11 +11,16 @@ from app.models.data_service import (
 from app.screens import (
     ScheduleScreen,
     StandingsScreen,
-    CalendarScreen
+    CalendarScreen,
+    ErrorScreen
 )
 from app.widgets import CalendarWidget, slide_transition
 from app.config import STATIC_WIDTH, INITIAL_HEIGHT
 from app.state import ApplicationState
+from app.exceptions import APIError
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class MLBApp:
@@ -71,6 +76,22 @@ class MLBApp:
             new_height=target_height
         )
 
+    @staticmethod
+    def handle_errors(func):
+        """Decorator to handle errors during screen transitions."""
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except (APIError, Exception) as e:  # pylint: disable=broad-exception-caught
+                logger.error("Error in %s: %s", func.__name__, e, exc_info=True)
+                # Provide a user-friendly message for generic exceptions
+                msg = str(e) if isinstance(e, APIError) else "An unexpected error occurred"
+                widgets, title = ErrorScreen.get_widgets(msg)
+                self.set_window_data(widgets, title, "error")
+                return False
+        return wrapper
+
+    @handle_errors
     def update_to_schedule(self, *_args, **_kwargs):
         """Transitions the main window to show the schedule for current_date."""
         date_str = format_date(self.state.current_date)
@@ -96,6 +117,7 @@ class MLBApp:
             return self.update_to_schedule()
         return True
 
+    @handle_errors
     def toggle_standings(self, *_args, **_kwargs):
         """Toggles between standings and schedule/calendar."""
         if self.state.on_standings_screen:
@@ -105,6 +127,7 @@ class MLBApp:
         self.set_window_data(widgets, title, "standings")
         return True
 
+    @handle_errors
     def update_to_calendar(self, *_args, sync_page=True, focus_target=None, **_kwargs):
         """Transitions to the calendar view."""
         if self.state.on_standings_screen:
