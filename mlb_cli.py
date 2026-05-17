@@ -25,6 +25,7 @@ class MLBApp:
     """
     Main application class that manages the WindowManager and screen transitions.
     """
+    # pylint: disable=too-many-instance-attributes
 
     # pylint: disable=too-many-instance-attributes
 
