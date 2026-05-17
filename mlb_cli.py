@@ -113,7 +113,7 @@ class MLBApp:
         self.set_window_data(widgets, title, "standings")
         return True
 
-    def update_to_calendar(self, *_args, sync_page=True, **_kwargs):
+    def update_to_calendar(self, *_args, sync_page=True, focus_target=None, **_kwargs):
         """Transitions to the calendar view."""
         if self.active_page == "standings":
             self.current_date = datetime.now()
@@ -138,28 +138,53 @@ class MLBApp:
             widgets,
             title,
             f"calendar:{self.calendar_page}",
-            on_finish=self._focus_current_date_in_calendar
+            on_finish=lambda: self._focus_current_date_in_calendar(target=focus_target)
         )
         return True
 
-    def _focus_current_date_in_calendar(self):
-        """Helper to find and focus current_date in the calendar view."""
+    def _focus_current_date_in_calendar(self, target=None):
+        # pylint: disable=too-many-branches
+        """
+        Helper to find and focus a date in the calendar view.
+        If target is None, focuses current_date.
+        If target is 'first', focuses first date of first month.
+        If target is 'last', focuses last date of last month.
+        """
+        calendar_widgets = []
         for widget in self.main_window:
             if not isinstance(widget, ptg.Container):
                 continue
             for sub in widget:
-                if not (isinstance(sub, CalendarWidget) and
-                        sub.month == self.current_date.month):
-                    continue
-                day = self.current_date.day
-                if day not in sub.day_to_button:
-                    continue
-                btn = sub.day_to_button[day]
-                for i, (selectable, _) in enumerate(self.main_window.selectables):
-                    if selectable is btn:
-                        self.main_window.select(i)
-                        self.manager.focused = btn
-                        return True
+                if isinstance(sub, CalendarWidget):
+                    calendar_widgets.append(sub)
+
+        if not calendar_widgets:
+            return False
+
+        target_btn = None
+        if target == "first":
+            sub = calendar_widgets[0]
+            first_day = min(sub.day_to_button.keys())
+            target_btn = sub.day_to_button[first_day]
+        elif target == "last":
+            sub = calendar_widgets[-1]
+            last_day = max(sub.day_to_button.keys())
+            target_btn = sub.day_to_button[last_day]
+        else:
+            # Default: focus current_date
+            for sub in calendar_widgets:
+                if sub.month == self.current_date.month:
+                    day = self.current_date.day
+                    if day in sub.day_to_button:
+                        target_btn = sub.day_to_button[day]
+                        break
+
+        if target_btn:
+            for i, (selectable, _) in enumerate(self.main_window.selectables):
+                if selectable is target_btn:
+                    self.main_window.select(i)
+                    self.manager.focused = target_btn
+                    return True
         return False
 
     def on_calendar_date_selected(self, year, month, day):
@@ -233,12 +258,12 @@ class MLBApp:
     def go_to_previous_page(self, *_args, **_kwargs):
         """Moves calendar view to the previous page with wrapping."""
         self.calendar_page = (self.calendar_page - 1) % 3
-        return self.update_to_calendar(sync_page=False)
+        return self.update_to_calendar(sync_page=False, focus_target="last")
 
     def go_to_next_page(self, *_args, **_kwargs):
         """Moves calendar view to the next page with wrapping."""
         self.calendar_page = (self.calendar_page + 1) % 3
-        return self.update_to_calendar(sync_page=False)
+        return self.update_to_calendar(sync_page=False, focus_target="first")
 
     def go_to_today(self, *_args, **_kwargs):
         """Resets the current date to today and updates the view."""

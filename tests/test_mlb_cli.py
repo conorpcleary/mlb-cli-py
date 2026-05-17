@@ -222,7 +222,30 @@ class TestMLBApp(unittest.TestCase):
             self.assertEqual(self.app.active_page, f"calendar:{self.app.calendar_page}")
             mock_set.assert_called_once()
             _, kwargs = mock_set.call_args
-            self.assertEqual(kwargs['on_finish'], self.app._focus_current_date_in_calendar)
+            # on_finish is now a lambda
+            self.assertTrue(callable(kwargs['on_finish']))
+
+    def test_focus_current_date_in_calendar_targets(self):
+        """Test _focus_current_date_in_calendar with first/last targets."""
+        mock_on_selected = MagicMock()
+        cal1 = CalendarWidget(2026, 5, mock_on_selected) # May
+        cal2 = CalendarWidget(2026, 6, mock_on_selected) # June
+
+        btn_may1 = cal1.day_to_button[1]
+        btn_june30 = cal2.day_to_button[30]
+
+        real_container1 = ptg.Container(cal1)
+        real_container2 = ptg.Container(cal2)
+        self.app.main_window.__iter__.side_effect = lambda: iter([real_container1, real_container2])
+        self.app.main_window.selectables = [(btn_may1, 0), (btn_june30, 1)]
+
+        # 1. Test 'first'
+        self.assertTrue(self.app._focus_current_date_in_calendar(target="first"))
+        self.assertEqual(self.app.manager.focused, btn_may1)
+
+        # 2. Test 'last'
+        self.assertTrue(self.app._focus_current_date_in_calendar(target="last"))
+        self.assertEqual(self.app.manager.focused, btn_june30)
 
     @patch('mlb_cli.CalendarScreen.get_widgets')
     def test_update_to_calendar_from_standings(self, mock_get):
