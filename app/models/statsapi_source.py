@@ -69,3 +69,11 @@ class StatsApiDataSource(BaseDataSource):
         except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError) as e:
             logger.error("Failed to fetch wild card for league %s: %s", league_id, e)
             raise APIError(f"Unable to fetch wild card standings for league {league_id}") from e
+
+    def fetch_boxscore(self, game_id):
+        """Fetches boxscore data for a specific game."""
+        try:
+            return statsapi.boxscore_data(game_id)
+        except (ValueError, KeyError, IndexError, RuntimeError, TypeError, AttributeError) as e:
+            logger.error("Failed to fetch boxscore for game %s: %s", game_id, e)
+            raise APIError(f"Unable to fetch boxscore for game {game_id}") from e

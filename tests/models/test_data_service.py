@@ -13,6 +13,7 @@ from app.models.data_service import (
     get_today_date,
     fetch_wild_card,
     fetch_standings,
+    fetch_boxscore,
     parse_date,
     TEAMS
 )
@@ -295,6 +296,23 @@ class TestDataService(unittest.TestCase):
         self.assertEqual(nl[0]['div_name'], 'NL East')
         self.assertEqual(al_wc['div_name'], '103 WC')
         self.assertEqual(nl_wc['div_name'], '104 WC')
+
+    @patch('statsapi.boxscore_data')
+    def test_fetch_boxscore(self, mock_boxscore):
+        """Test fetch_boxscore calls statsapi.boxscore_data."""
+        mock_boxscore.return_value = {'game_id': 123}
+        with patch('app.models.data_service.get_cached_data', return_value=None), \
+             patch('app.models.data_service.set_cached_data'):
+            result = fetch_boxscore(123)
+            mock_boxscore.assert_called_with(123)
+            self.assertEqual(result, {'game_id': 123})
+
+    @patch('app.models.data_service.get_cached_data')
+    def test_fetch_boxscore_cache_hit(self, mock_cache):
+        """Test fetch_boxscore returns cached data."""
+        mock_cache.return_value = {'game_id': 999}
+        result = fetch_boxscore(123)
+        self.assertEqual(result, {'game_id': 999})
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

@@ -11,16 +11,19 @@ class GameWidget(ptg.Container):
     A container widget displaying the score and teams for a single MLB game.
     """
 
-    def __init__(self, game, **kwargs):
+    def __init__(self, game, on_selected=None, **kwargs):
         """
         Initializes the GameWidget with game data.
 
         Args:
             game (dict): Dictionary containing game details (teams, scores, status).
+            on_selected (callable, optional): Callback when the widget is selected with ENTER.
             **kwargs: Additional arguments for ptg.Container.
         """
         super().__init__(**kwargs)
         self.game_id = game['game_id']
+        self.on_selected = on_selected
+        self.selectable = True
         self._selectables_length = 1
 
         away_abbr = get_team_abbr(game['away_id'])
@@ -38,6 +41,27 @@ class GameWidget(ptg.Container):
 
         self.set_widgets([self.away_info, self.home_info])
         self.border = ptg.boxes.SINGLE
+        self.styles.border = "green"
+
+    def select(self, index=0):
+        """Selection implementation for the widget."""
+        if index is not None:
+            self.styles.border = "bold green"
+        else:
+            self.styles.border = "green"
+
+    def handle_key(self, key):
+        """
+        Handles key events for the widget.
+
+        Args:
+            key (str): The key that was pressed.
+        """
+        if key == ptg.keys.RETURN:
+            if self.on_selected:
+                self.on_selected(self.game_id)
+                return True
+        return super().handle_key(key)
 
     def _get_scores(self, game, status):
         """Determines the away and home scores based on game status."""
@@ -94,18 +118,6 @@ class GameWidget(ptg.Container):
         )
         return away_row, home_row
 
-    def handle_key(self, key):
-        """
-        Handles key events for the widget.
-
-        Args:
-            key (str): The key that was pressed.
-        """
-        if key == ptg.keys.RETURN:
-            # Future: show box score
-            pass
-        return super().handle_key(key)
-
 
 def chunk_list(lst, n):
     """
@@ -119,19 +131,20 @@ def chunk_list(lst, n):
         yield lst[i:i + n]
 
 
-def create_grid(games):
+def create_grid(games, on_game_selected=None):
     """
     Creates a grid layout of GameWidgets from a list of games.
 
     Args:
         games (list): List of game data dictionaries.
+        on_game_selected (callable, optional): Callback when a game is selected.
 
     Returns:
         list: A list of tuples, each representing a row of widgets for the grid.
     """
     grid_rows = []
     for game_group in chunk_list(games, 3):
-        widgets = [GameWidget(game) for game in game_group]
+        widgets = [GameWidget(game, on_selected=on_game_selected) for game in game_group]
         # Fill empty slots if less than 3 games in row
         while len(widgets) < 3:
             widgets.append(ptg.Label(""))

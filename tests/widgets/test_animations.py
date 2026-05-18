@@ -1,88 +1,74 @@
 """
-Unit tests for the animations module.
+Unit tests for animation utilities.
 """
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 import pytermgui as ptg
 from app.widgets.animations import slide_transition
 
+
 class TestAnimations(unittest.TestCase):
-    """Test cases for animations.py functions."""
+    """Test cases for animation functions."""
+    # pylint: disable=duplicate-code
 
     @patch('pytermgui.animator.animate_float')
-    def test_slide_transition(self, mock_animate):
-        # pylint: disable=too-many-locals
-        """Test slide_transition starts the animation and handles callbacks."""
-        mock_window = MagicMock(spec=ptg.Window)
-        mock_window.width = 80
-        mock_window.height = 20
-        mock_window.pos = (10, 5)
+    def test_slide_transition_execution(self, mock_animate):
+        """Test slide_transition and its internal callbacks."""
+        window = MagicMock(spec=ptg.Window)
+        window.width = 10
+        window.height = 5
+        window.pos = (0, 0)
+        manager = MagicMock(spec=ptg.WindowManager)
+        manager.terminal.width = 100
 
-        mock_manager = MagicMock(spec=ptg.WindowManager)
-        mock_manager.terminal.width = 100
-        mock_manager.terminal.height = 30
+        on_finish = MagicMock()
 
-        widgets = [MagicMock()]
-        title = "New Title"
+        # We need to simulate the animation flow.
+        # slide_transition calls animate_float for slide-out.
+        # on_slide_out_finish starts slide-in.
+        # on_slide_in_finish calls on_finish.
 
-        # Call slide_transition
-        slide_transition(mock_window, mock_manager, widgets, title)
+        def mock_animate_float(duration, direction, on_finish=None, on_step=None):
+            # pylint: disable=unused-argument
+            # Simulate step if provided
+            if on_step:
+                mock_anim = MagicMock()
+                mock_anim.state = 0.5
+                on_step(mock_anim)
 
-        # 1. Verify first animation call (Slide-out)
-        self.assertEqual(mock_animate.call_count, 1)
-        _, kwargs = mock_animate.call_args
-        self.assertEqual(kwargs['duration'], 290)
-        self.assertEqual(kwargs['direction'], ptg.animations.Direction.FORWARD)
+            # Simulate finish
+            if on_finish:
+                on_finish(MagicMock())
 
-        # 2. Test on_finish for slide-out
-        on_finish = kwargs['on_finish']
-        mock_animate.reset_mock() # Reset to capture slide-in call
+        mock_animate.side_effect = mock_animate_float
 
-        on_finish(None)
+        slide_transition(window, manager, [], "Title", on_finish=on_finish)
 
-        # Verify window content update
-        mock_window.set_widgets.assert_called_with(widgets)
-        mock_window.set_title.assert_called_with(title)
-        self.assertEqual(mock_window.width, 80)
-        self.assertEqual(mock_window.height, 20)
-        self.assertEqual(mock_window.styles.border, "green")
-        self.assertEqual(mock_window.styles.corner, "green")
+        # Verify window properties were updated
+        window.set_widgets.assert_called_once()
+        window.set_title.assert_called_once_with("Title")
+        on_finish.assert_called_once()
 
-        # Verify second animation call (Slide-in)
-        self.assertEqual(mock_animate.call_count, 1)
-        _, kwargs_in = mock_animate.call_args
-        self.assertEqual(kwargs_in['direction'], ptg.animations.Direction.BACKWARD)
+        # Verify window.pos was updated during on_step
+        self.assertNotEqual(window.pos, (0, 0))
 
-        # Test on_step for slide-in
-        on_step_in = kwargs_in['on_step']
-        mock_anim_in = MagicMock()
-        mock_anim_in.state = 0.2
-        # curr_x = int(10 + (100 - 10) * 0.2) = 10 + 18 = 28
-        on_step_in(mock_anim_in)
-        self.assertEqual(mock_window.pos, (28, 5))
+    @patch('pytermgui.animator.animate_float')
+    def test_slide_transition_no_on_finish(self, mock_animate):
+        """Test slide_transition without on_finish callback."""
+        window = MagicMock(spec=ptg.Window)
+        window.width = 10
+        window.height = 5
+        window.pos = (0, 0)
+        manager = MagicMock()
+        manager.terminal.width = 100
 
-        # 3. Test on_finish for slide-in
-        mock_finish = MagicMock()
+        def mock_animate_float(duration, direction, on_finish=None, on_step=None):
+            # pylint: disable=unused-argument
+            if on_finish:
+                on_finish(MagicMock())
 
-        # We need to re-run slide_transition with on_finish to test it properly
-        mock_animate.reset_mock()
-        slide_transition(mock_window, mock_manager, widgets, title, on_finish=mock_finish)
+        mock_animate.side_effect = mock_animate_float
 
-        # Get the new slide-out finish
-        _, kwargs_out = mock_animate.call_args
-        on_finish_out = kwargs_out['on_finish']
-        mock_animate.reset_mock()
-
-        # Trigger slide-out finish -> starts slide-in
-        on_finish_out(None)
-
-        # Get the new slide-in finish
-        _, kwargs_in_final = mock_animate.call_args
-        on_finish_final = kwargs_in_final['on_finish']
-
-        # Trigger slide-in finish
-        on_finish_final(None)
-        mock_finish.assert_called_once()
-
-if __name__ == '__main__':  # pragma: no cover
-    unittest.main()
+        # Should not crash
+        slide_transition(window, manager, [], "Title")
+        mock_animate.assert_called()

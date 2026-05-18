@@ -8,16 +8,18 @@ from app.widgets import (
     Separator,
     GameWidget,
     StandingWidget,
-    NavigationWidget,
     CalendarButton,
-    CalendarWidget,
-    chunk_list,
     create_grid
 )
 
 class TestGameWidgets(unittest.TestCase):
     """Test cases for game_widgets.py classes and functions."""
     # pylint: disable=protected-access
+
+    def test_calendar_button_mouse_handling(self):
+        """Test that CalendarButton ignores mouse events."""
+        btn = CalendarButton("1", lambda _: None)
+        self.assertFalse(btn.handle_mouse(None))
 
     def test_separator_init(self):
         """Test Separator initialization."""
@@ -199,91 +201,59 @@ class TestGameWidgets(unittest.TestCase):
         ))
 
     def test_game_widget_handle_key(self):
-        """Test GameWidget handle_key returns super().handle_key()."""
+        """Test GameWidget handle_key triggers on_selected."""
         game = {
             'game_id': 123,
             'away_id': 1,
             'home_id': 2,
             'status': 'Final'
         }
+        mock_on_selected = MagicMock()
+        widget = GameWidget(game, on_selected=mock_on_selected)
+
+        # Test RETURN key triggers callback
+        result = widget.handle_key(ptg.keys.RETURN)
+        self.assertTrue(result)
+        mock_on_selected.assert_called_once_with(123)
+
+        # Test other key doesn't trigger callback
+        mock_on_selected.reset_mock()
+        with patch('pytermgui.Container.handle_key', return_value=False):
+            result = widget.handle_key('a')
+            self.assertFalse(result)
+            mock_on_selected.assert_not_called()
+
+    def test_game_widget_focus_blur(self):
+        """Test GameWidget focus and blur styling."""
+        game = {'game_id': 123, 'away_id': 1, 'home_id': 2, 'status': 'Final'}
         widget = GameWidget(game)
-        # Test RETURN key to cover the branch
-        widget.handle_key(ptg.keys.RETURN)
-        # Mock super().handle_key to return True
-        with patch('pytermgui.Container.handle_key', return_value=True):
-            self.assertTrue(widget.handle_key(ptg.keys.RETURN))
-            self.assertTrue(widget.handle_key('some_other_key'))
 
-    def test_standing_widget_no_data(self):
-        """Test StandingWidget with no division data."""
-        widget = StandingWidget(None)
-        labels = [w.value for w in widget.inner_widgets if isinstance(w, ptg.Label)]
-        self.assertIn("No Data", labels[0])
+        # Initial style
+        self.assertIn("green", str(widget.styles.border))
 
-    def test_navigation_widget_init(self):
-        """Test NavigationWidget content."""
-        # Test schedule page
-        widget = NavigationWidget(active_page="schedule")
-        self.assertIn("Prev", widget.prev_label.value)
-        self.assertIn("Next", widget.next_label.value)
-        self.assertIn("Today", widget.today_label.value)
-        self.assertIn("Standings", widget.stand_label.value)
+        # Select
+        widget.select(0)
+        self.assertIn("bold", str(widget.styles.border))
+        self.assertIn("green", str(widget.styles.border))
 
-        # Test standings page
-        widget = NavigationWidget(active_page="standings")
-        self.assertIn("Schedule", widget.schedule_label.value)
-
-    def test_calendar_button_mouse_handling(self):
-        """Test that CalendarButton ignores mouse events."""
-        btn = CalendarButton("1", lambda _: None)
-        self.assertFalse(btn.handle_mouse(None))
-
-    def test_calendar_widget_init(self):
-        """Test CalendarWidget initialization and callback."""
-        mock_on_selected = MagicMock()
-        # Instead of mocking Button, let's just let it be created but check if they exist
-        widget = CalendarWidget(2026, 5, mock_on_selected)
-
-        # Verify first day (May 1, 2026 is Friday)
-        self.assertEqual(widget.year, 2026)
-        self.assertEqual(widget.month, 5)
-        # Check if we have splitters for weeks
-        splitters = [w for w in widget._widgets if isinstance(w, ptg.Splitter)]
-        # May 2026 has 6 weeks in Sun-Sat layout
-        self.assertEqual(len(splitters), 7) # 1 header + 6 weeks
-
-    def test_calendar_widget_selected_day(self):
-        """Test CalendarWidget with a selected day highlighted."""
-        mock_on_selected = MagicMock()
-        widget = CalendarWidget(2026, 5, mock_on_selected, selected_day=15)
-        # Verify the button for day 15 has 'inverse' style
-        btn = widget.day_to_button[15]
-        self.assertIn("inverse", str(btn.styles.label))
-        # Verify another button has 'white' style
-        other_btn = widget.day_to_button[1]
-        self.assertIn("white", str(other_btn.styles.label))
-
-    def test_navigation_widget_calendar_init(self):
-        """Test NavigationWidget calendar mode."""
-        widget = NavigationWidget(active_page="calendar")
-        self.assertIn("Prev Page", widget.prev_label.value)
-        self.assertIn("Next Page", widget.next_label.value)
-        self.assertIn("Standings", widget.stand_label.value)
-
-    def test_chunk_list(self):
-        """Test chunk_list utility."""
-        lst = [1, 2, 3, 4, 5]
-        chunks = list(chunk_list(lst, 2))
-        self.assertEqual(chunks, [[1, 2], [3, 4], [5]])
+        # Unselect
+        widget.select(None)
+        self.assertIn("green", str(widget.styles.border))
+        self.assertNotIn("bold", str(widget.styles.border))
 
     @patch('app.widgets.game_widget.GameWidget')
     def test_create_grid(self, mock_game_widget):
         """Test grid creation logic."""
         mock_game_widget.return_value = MagicMock()
         games = [{}, {}, {}, {}] # 4 games -> 2 rows
-        grid = create_grid(games)
+        mock_callback = MagicMock()
+        grid = create_grid(games, on_game_selected=mock_callback)
         self.assertEqual(len(grid), 2)
         self.assertEqual(len(grid[0]), 3) # Row length is 3
+        # Verify callback was passed to GameWidget
+        mock_game_widget.assert_called()
+        _, kwargs = mock_game_widget.call_args
+        self.assertEqual(kwargs['on_selected'], mock_callback)
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

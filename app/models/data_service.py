@@ -188,3 +188,24 @@ def fetch_standings():
     result = (al_divs, nl_divs, al_wc, nl_wc)
     set_cached_data(cache_key, result, ttl=LIVE_DATA_TTL)
     return result
+
+
+def fetch_boxscore(game_id):
+    """
+    Fetches the boxscore for a specific game.
+
+    Args:
+        game_id (int): The ID of the game.
+
+    Returns:
+        dict: Boxscore data.
+    """
+    cache_key = f"boxscore:{game_id}"
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        return cached
+
+    data = _data_source.fetch_boxscore(game_id)
+    # Box score data for live/recent games changes, so use TTL
+    set_cached_data(cache_key, data, ttl=LIVE_DATA_TTL)
+    return data

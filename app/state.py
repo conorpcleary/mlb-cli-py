@@ -72,3 +72,8 @@ class ApplicationState:
     def on_standings_screen(self):
         """Returns True if currently on the standings page."""
         return self.active_page == "standings"
+
+    @property
+    def on_box_score_screen(self):
+        """Returns True if currently on a box score page."""
+        return self.active_page and self.active_page.startswith("boxscore")

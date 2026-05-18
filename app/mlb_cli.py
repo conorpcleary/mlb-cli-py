@@ -12,9 +12,10 @@ from .screens import (
     ScheduleScreen,
     StandingsScreen,
     CalendarScreen,
-    ErrorScreen
+    ErrorScreen,
+    BoxScoreScreen
 )
-from .widgets import CalendarWidget, slide_transition
+from .widgets import CalendarWidget, GameWidget, slide_transition
 from .config import STATIC_WIDTH, INITIAL_HEIGHT
 from .state import ApplicationState
 from .exceptions import APIError
@@ -95,9 +96,39 @@ class MLBApp:
     def update_to_schedule(self, *_args, **_kwargs):
         """Transitions the main window to show the schedule for current_date."""
         date_str = format_date(self.state.current_date)
-        widgets, title = ScheduleScreen.get_widgets(date_str)
-        self.set_window_data(widgets, title, f"schedule:{date_str}")
+        widgets, title = ScheduleScreen.get_widgets(
+            date_str,
+            on_game_selected=self.update_to_box_score
+        )
+        self.set_window_data(
+            widgets,
+            title,
+            f"schedule:{date_str}",
+            on_finish=self._focus_first_game_in_schedule
+        )
         return True
+
+    def _focus_first_game_in_schedule(self):
+        """Finds and focuses the first GameWidget in the schedule."""
+        for i, (selectable, _) in enumerate(self.main_window.selectables):
+            if isinstance(selectable, GameWidget):
+                self.main_window.select(i)
+                self.manager.focused = selectable
+                return True
+        return False
+
+    @handle_errors
+    def update_to_box_score(self, game_id):
+        """Transitions to the box score view."""
+        widgets, title = BoxScoreScreen.get_widgets(game_id)
+        self.set_window_data(widgets, title, f"boxscore:{game_id}")
+        return True
+
+    def handle_back(self, *_args, **_kwargs):
+        """Returns from box score to schedule, or handles other back logic."""
+        if self.state.on_box_score_screen:
+            return self.update_to_schedule()
+        return False
 
     def go_to_previous_day(self, *_args, **_kwargs):
         """Decrements the current date or page."""
@@ -311,6 +342,7 @@ class MLBApp:
             self.manager.bind("t", self.go_to_today)
             self.manager.bind("c", self.update_to_calendar)
             self.manager.bind("x", self.toggle_standings)
+            self.manager.bind("q", self.handle_back)
             self.manager.bind(ptg.keys.ESC, self.exit_app)
 
             # WASD for Calendar Navigation
