@@ -113,16 +113,49 @@ class TestNavigationLogic(unittest.TestCase):
             self.app.go_to_next_day()
             self.assertEqual(self.app.state.current_date, initial_date + timedelta(days=1))
 
-    def test_go_to_today(self):
-        """Test resetting current date to today."""
+    def test_go_to_today_schedule(self):
+        """Test resetting current date to today from schedule view."""
+        self.app.state.active_page = "schedule:2026-10-01"
         self.app.state.current_date = datetime(2026, 10, 1)
-        with patch.object(self.app, 'update_to_schedule'):
+        with patch.object(self.app, 'update_to_schedule') as mock_update:
             self.app.go_to_today()
+            mock_update.assert_called_once()
             # It should be today now
             self.assertEqual(
                 self.app.state.current_date.strftime('%Y-%m-%d'),
                 datetime.now().strftime('%Y-%m-%d')
             )
+
+    def test_go_to_today_calendar(self):
+        """Test resetting current date to today from calendar view."""
+        self.app.state.active_page = "calendar:0"
+        self.app.state.current_date = datetime(2026, 10, 1)
+        with patch.object(self.app, 'update_to_calendar') as mock_update:
+            self.app.go_to_today()
+            mock_update.assert_called_once()
+            # It should be today now
+            self.assertEqual(
+                self.app.state.current_date.strftime('%Y-%m-%d'),
+                datetime.now().strftime('%Y-%m-%d')
+            )
+
+    def test_go_to_previous_day_standings(self):
+        """Test go_to_previous_day while on standings screen (should do nothing)."""
+        self.app.state.active_page = "standings"
+        initial_date = self.app.state.current_date
+        with patch.object(self.app, 'update_to_schedule') as mock_update:
+            self.app.go_to_previous_day()
+            mock_update.assert_not_called()
+            self.assertEqual(self.app.state.current_date, initial_date)
+
+    def test_go_to_next_day_standings(self):
+        """Test go_to_next_day while on standings screen (should do nothing)."""
+        self.app.state.active_page = "standings"
+        initial_date = self.app.state.current_date
+        with patch.object(self.app, 'update_to_schedule') as mock_update:
+            self.app.go_to_next_day()
+            mock_update.assert_not_called()
+            self.assertEqual(self.app.state.current_date, initial_date)
 
     @patch('app.mlb_cli.StandingsScreen.get_widgets')
     def test_toggle_standings(self, mock_get):
