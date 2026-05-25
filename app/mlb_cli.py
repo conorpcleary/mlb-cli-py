@@ -4,6 +4,7 @@ This module initializes the Terminal UI and manages the primary window and globa
 """
 from datetime import datetime, timedelta
 import pytermgui as ptg
+from pytermgui.ansi_interface import MouseEvent, MouseAction
 from .models.data_service import (
     fetch_teams,
     format_date
@@ -21,6 +22,21 @@ from .exceptions import APIError
 from .logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class MLBWindow(ptg.Window):
+    """
+    A custom Window class that prevents deselection on blur.
+    """
+
+    def blur(self) -> None:
+        """Blurs the window without deselecting its content."""
+        self.has_focus = False
+        self.handle_mouse(MouseEvent(MouseAction.RELEASE, (0, 0)))
+
+        if not self.is_noblur:
+            self.styles.border = self.styles.border_blurred
+            self.styles.corner = self.styles.corner_blurred
 
 
 class MLBApp:
@@ -104,6 +120,9 @@ class MLBApp:
         if self.state.on_calendar_screen:
             return self.go_to_previous_page()
 
+        if self.state.on_standings_screen:
+            return True
+
         if self.state.decrement_date():
             return self.update_to_schedule()
         return True
@@ -112,6 +131,9 @@ class MLBApp:
         """Increments the current date or page."""
         if self.state.on_calendar_screen:
             return self.go_to_next_page()
+
+        if self.state.on_standings_screen:
+            return True
 
         if self.state.increment_date():
             return self.update_to_schedule()
@@ -198,7 +220,6 @@ class MLBApp:
             for i, (selectable, _) in enumerate(self.main_window.selectables):
                 if selectable is target_btn:
                     self.main_window.select(i)
-                    self.manager.focused = target_btn
                     return True
         return False
 
@@ -216,7 +237,7 @@ class MLBApp:
         if not self.state.on_calendar_screen:
             return False
 
-        focused = self.manager.focused
+        focused = self.main_window.selected
         if focused is None:
             return False
 
@@ -266,7 +287,6 @@ class MLBApp:
                     for i, (selectable, _) in enumerate(self.main_window.selectables):
                         if selectable is target_btn:
                             self.main_window.select(i)
-                            self.manager.focused = target_btn
                             return True
         return False
 
@@ -283,6 +303,8 @@ class MLBApp:
     def go_to_today(self, *_args, **_kwargs):
         """Resets the current date to today and updates the view."""
         self.state.reset_to_today()
+        if self.state.on_calendar_screen:
+            return self.update_to_calendar()
         return self.update_to_schedule()
 
     def exit_app(self, *_args, **_kwargs):
@@ -295,7 +317,7 @@ class MLBApp:
         with self.manager:
             self.static_height = min(INITIAL_HEIGHT, self.manager.terminal.height - 2)
 
-            self.main_window = ptg.Window(
+            self.main_window = MLBWindow(
                 width=self.static_width,
                 height=self.static_height,
                 is_static=True,
