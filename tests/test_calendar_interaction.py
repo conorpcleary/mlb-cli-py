@@ -24,6 +24,14 @@ class TestCalendarInteraction(unittest.TestCase):
             self.app.main_window = MagicMock(spec=ptg.Window)
             self.app.main_window.__iter__.return_value = iter([])
 
+            def mock_select(index):
+                """Mock select to update selected attribute."""
+                main_window = self.app.main_window
+                if hasattr(main_window, 'selectables') and index < len(main_window.selectables):
+                    main_window.selected = main_window.selectables[index][0]
+
+            self.app.main_window.select.side_effect = mock_select
+
     def test_focus_current_date_in_calendar(self):
         """Test _focus_current_date_in_calendar with various widget structures."""
         # Hit: deep structure
@@ -40,7 +48,7 @@ class TestCalendarInteraction(unittest.TestCase):
 
         self.assertTrue(self.app._focus_current_date_in_calendar())
         self.app.main_window.select.assert_called_with(0)
-        self.assertEqual(self.app.manager.focused, mock_btn)
+        self.assertEqual(self.app.main_window.selected, mock_btn)
 
     def test_focus_current_date_in_calendar_not_a_container(self):
         """Test _focus_current_date_in_calendar skips non-container widgets."""
@@ -86,11 +94,11 @@ class TestCalendarInteraction(unittest.TestCase):
 
         # 1. Test 'first'
         self.assertTrue(self.app._focus_current_date_in_calendar(target="first"))
-        self.assertEqual(self.app.manager.focused, btn_may1)
+        self.assertEqual(self.app.main_window.selected, btn_may1)
 
         # 2. Test 'last'
         self.assertTrue(self.app._focus_current_date_in_calendar(target="last"))
-        self.assertEqual(self.app.manager.focused, btn_june30)
+        self.assertEqual(self.app.main_window.selected, btn_june30)
 
     @patch('app.mlb_cli.CalendarScreen.get_widgets')
     def test_update_to_calendar(self, mock_get):
@@ -163,7 +171,7 @@ class TestCalendarInteraction(unittest.TestCase):
 
         # 2. On calendar page, but nothing focused
         self.app.state.active_page = "calendar:0"
-        self.app.manager.focused = None
+        self.app.main_window.selected = None
         self.assertFalse(self.app._navigate_calendar("w"))
 
     def test_navigate_calendar_success(self):
@@ -177,7 +185,7 @@ class TestCalendarInteraction(unittest.TestCase):
         btn2 = cal.day_to_button[2]
 
         # Put button 1 in focus
-        self.app.manager.focused = btn1
+        self.app.main_window.selected = btn1
 
         # Real Container with CalendarWidget
         real_container = ptg.Container(cal)
@@ -189,14 +197,14 @@ class TestCalendarInteraction(unittest.TestCase):
         # Move right ('d') from day 1 to day 2
         self.assertTrue(self.app._navigate_calendar("d"))
         self.app.main_window.select.assert_called_with(1)
-        self.assertEqual(self.app.manager.focused, btn2)
+        self.assertEqual(self.app.main_window.selected, btn2)
 
     def test_navigate_calendar_invalid_direction(self):
         """Test _navigate_calendar with invalid direction."""
         self.app.state.active_page = "calendar:0"
         cal = CalendarWidget(2026, 5, MagicMock())
         btn1 = cal.day_to_button[1]
-        self.app.manager.focused = btn1
+        self.app.main_window.selected = btn1
 
         real_container = ptg.Container(cal)
         self.app.main_window.__iter__.side_effect = lambda: iter([real_container])
@@ -208,7 +216,7 @@ class TestCalendarInteraction(unittest.TestCase):
         self.app.state.active_page = "calendar:0"
         cal = CalendarWidget(2026, 5, MagicMock())
         btn31 = cal.day_to_button[31] # Last day of May
-        self.app.manager.focused = btn31
+        self.app.main_window.selected = btn31
 
         real_container = ptg.Container(cal)
         self.app.main_window.__iter__.side_effect = lambda: iter([real_container])
@@ -222,7 +230,7 @@ class TestCalendarInteraction(unittest.TestCase):
 
         cal = CalendarWidget(2026, 5, MagicMock())
         btn1 = cal.day_to_button[1]
-        self.app.manager.focused = btn1
+        self.app.main_window.selected = btn1
 
         real_container = ptg.Container(cal)
         # Yield a Label THEN a Container to hit first loop's continue
@@ -241,7 +249,7 @@ class TestCalendarInteraction(unittest.TestCase):
         """Test _navigate_calendar when focused widget is not in a CalendarWidget."""
         self.app.state.active_page = "calendar:0"
         mock_btn = MagicMock(spec=ptg.Button)
-        self.app.manager.focused = mock_btn
+        self.app.main_window.selected = mock_btn
 
         # Container with a non-calendar widget
         real_container = ptg.Container(ptg.Label("test"))
@@ -255,7 +263,7 @@ class TestCalendarInteraction(unittest.TestCase):
 
         cal = CalendarWidget(2026, 5, MagicMock())
         btn1 = cal.day_to_button[1]
-        self.app.manager.focused = btn1
+        self.app.main_window.selected = btn1
 
         # Container with the current calendar and a non-calendar widget
         real_container = ptg.Container(cal, ptg.Label("test"))
@@ -275,7 +283,7 @@ class TestCalendarInteraction(unittest.TestCase):
         btn_may31 = cal1.day_to_button[31]
         btn_june1 = cal2.day_to_button[1]
 
-        self.app.manager.focused = btn_may31
+        self.app.main_window.selected = btn_may31
 
         real_container1 = ptg.Container(cal1)
         real_container2 = ptg.Container(cal2)
@@ -286,7 +294,7 @@ class TestCalendarInteraction(unittest.TestCase):
         # Move right ('d') from May 31 to June 1
         self.assertTrue(self.app._navigate_calendar("d"))
         self.app.main_window.select.assert_called_with(1)
-        self.assertEqual(self.app.manager.focused, btn_june1)
+        self.assertEqual(self.app.main_window.selected, btn_june1)
 
 
 if __name__ == '__main__':
